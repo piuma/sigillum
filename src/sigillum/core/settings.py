@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -21,6 +21,40 @@ from ..i18n import _
 
 
 SourceKind = Literal["file", "pkcs11"]
+
+
+# Mapping for the two cases where the locale ISO-3166 code differs from the
+# code used in the EU LOTL/eIDAS framework. Everything else is identity.
+_LOCALE_TO_LOTL_COUNTRY = {
+    "GB": "UK",  # ISO uses GB; the LOTL uses UK historically
+    "GR": "EL",  # ISO uses GR; the LOTL uses EL (Hellas)
+}
+
+# Country codes that actually have an XML TSL pointer in the EU LOTL.
+# Used to validate the locale-derived default so a stray locale (e.g. en_US)
+# doesn't propagate a meaningless code into the trust-store configuration.
+LOTL_COUNTRIES: frozenset[str] = frozenset({
+    "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "EL", "ES",
+    "FI", "FR", "HR", "HU", "IE", "IS", "IT", "LI", "LT", "LU",
+    "LV", "MT", "NL", "NO", "PL", "PT", "RO", "SE", "SI", "SK", "UK",
+})
+
+
+def default_country_from_locale() -> str:
+    """Return the LOTL country code derived from $LANG (or $LC_ALL).
+
+    Falls back to ``"IT"`` for any locale that isn't an EU/EEA member state
+    listed in the LOTL (e.g. ``en_US``, ``C``, unset). Picks Italy as the
+    safety default because the project's primary user base is Italian.
+    """
+    lang = os.environ.get("LANG") or os.environ.get("LC_ALL") or ""
+    if "_" in lang:
+        cc = lang.split("_", 1)[1].split(".", 1)[0].upper()
+        if cc.isalpha() and len(cc) == 2:
+            cc = _LOCALE_TO_LOTL_COUNTRY.get(cc, cc)
+            if cc in LOTL_COUNTRIES:
+                return cc
+    return "IT"
 
 
 @dataclass
@@ -36,8 +70,16 @@ class Settings:
     tsa_url: str = ""
     tsa_username: str = ""
     tsa_password: str = ""
-    # ISO 8601 timestamp of the last successful AgID TSL import (UTC)
+    # Legacy: ISO 8601 timestamp of the last successful TSL import (UTC).
+    # Kept in the schema for backward compatibility with v0.1 installs; the
+    # authoritative source for multi-country setups is `tsl_imports`.
     tsl_last_import: str = ""
+    # NEW (v0.2+): ISO 8601 timestamps per imported country (uppercase ISO code).
+    # Example: {"IT": "2026-05-25T10:00:00+00:00", "DE": "2026-05-24T..."}.
+    tsl_imports: dict[str, str] = field(default_factory=dict)
+    # NEW: countries whose trust store is included when verifying signatures.
+    # Empty means "use the locale-derived default" (see `active_countries`).
+    tsl_active_countries: list[str] = field(default_factory=list)
     # Visible signature preferences (PAdES only)
     signature_position: str = "bottom-right"
     signature_image: str = ""
@@ -60,12 +102,55 @@ class Settings:
             return _("PKCS#11 token: {label}").format(label=label)
         return _("No device configured")
 
+    def active_countries(self) -> list[str]:
+        """Return the country codes whose trust store the verifier should load.
+
+        If the user hasn't customised the list, falls back to the
+        locale-derived default (one country). The returned list always
+        contains at least one entry.
+        """
+        if self.tsl_active_countries:
+            return list(self.tsl_active_countries)
+        return [default_country_from_locale()]
+
+    def last_import_for(self, country: str) -> str:
+        """ISO timestamp of the last import for *country*, or empty string."""
+        return self.tsl_imports.get(country.upper(), "")
+
+    def record_import(self, country: str, iso_timestamp: str) -> None:
+        """Update the in-memory record after a successful import.
+
+        Also mirrors into the legacy ``tsl_last_import`` when *country* is the
+        locale-derived default so the v0.1 read path keeps working.
+        """
+        cc = country.upper()
+        self.tsl_imports[cc] = iso_timestamp
+        if cc == default_country_from_locale():
+            self.tsl_last_import = iso_timestamp
+
 
 def settings_path() -> Path:
     """Path of the settings file (honors $XDG_CONFIG_HOME)."""
     xdg = os.environ.get("XDG_CONFIG_HOME")
     base = Path(xdg) if xdg else Path.home() / ".config"
     return base / "sigillum" / "settings.json"
+
+
+def _parse_tsl_imports(raw) -> dict[str, str]:
+    """Best-effort parse of the tsl_imports dict from JSON (uppercase keys)."""
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, str] = {}
+    for k, v in raw.items():
+        if isinstance(k, str) and isinstance(v, str) and k.isalpha():
+            out[k.upper()] = v
+    return out
+
+
+def _parse_active_countries(raw) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    return [c.upper() for c in raw if isinstance(c, str) and c.isalpha()]
 
 
 def load_settings(path: Path | None = None) -> Settings:
@@ -79,6 +164,20 @@ def load_settings(path: Path | None = None) -> Settings:
         return Settings()
     if not isinstance(data, dict):
         return Settings()
+
+    legacy_last = str(data.get("tsl_last_import", ""))
+    tsl_imports = _parse_tsl_imports(data.get("tsl_imports"))
+    tsl_active = _parse_active_countries(data.get("tsl_active_countries"))
+
+    # Migration: v0.1 wrote only `tsl_last_import` (one timestamp, implicitly
+    # Italy). If we see that case, populate the modern fields so future writes
+    # use the new schema while leaving the legacy field intact.
+    if legacy_last and not tsl_imports:
+        default_cc = default_country_from_locale()
+        tsl_imports = {default_cc: legacy_last}
+        if not tsl_active:
+            tsl_active = [default_cc]
+
     return Settings(
         source=data.get("source") if data.get("source") in ("file", "pkcs11") else None,
         file_path=str(data.get("file_path", "")),
@@ -88,7 +187,9 @@ def load_settings(path: Path | None = None) -> Settings:
         tsa_url=str(data.get("tsa_url", "")),
         tsa_username=str(data.get("tsa_username", "")),
         tsa_password=str(data.get("tsa_password", "")),
-        tsl_last_import=str(data.get("tsl_last_import", "")),
+        tsl_last_import=legacy_last,
+        tsl_imports=tsl_imports,
+        tsl_active_countries=tsl_active,
         signature_position=str(data.get("signature_position", "bottom-right")),
         signature_image=str(data.get("signature_image", "")),
     )
