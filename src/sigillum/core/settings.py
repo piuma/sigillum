@@ -70,6 +70,10 @@ class Settings:
     tsa_url: str = ""
     tsa_username: str = ""
     tsa_password: str = ""
+    # User's primary eIDAS country (LOTL code). Decoupled from the UI
+    # language: a user may want German trust services while running the
+    # interface in Italian. Empty means "derive from $LANG".
+    country: str = ""
     # Legacy: ISO 8601 timestamp of the last successful TSL import (UTC).
     # Kept in the schema for backward compatibility with v0.1 installs; the
     # authoritative source for multi-country setups is `tsl_imports`.
@@ -78,7 +82,7 @@ class Settings:
     # Example: {"IT": "2026-05-25T10:00:00+00:00", "DE": "2026-05-24T..."}.
     tsl_imports: dict[str, str] = field(default_factory=dict)
     # NEW: countries whose trust store is included when verifying signatures.
-    # Empty means "use the locale-derived default" (see `active_countries`).
+    # Empty means "use the primary country only" (see `active_countries`).
     tsl_active_countries: list[str] = field(default_factory=list)
     # Visible signature preferences (PAdES only)
     signature_position: str = "bottom-right"
@@ -102,16 +106,27 @@ class Settings:
             return _("PKCS#11 token: {label}").format(label=label)
         return _("No device configured")
 
+    def effective_country(self) -> str:
+        """Resolve the primary eIDAS country: explicit setting → $LANG → IT.
+
+        This is the single source of truth for "which country am I working
+        in?" — used to decide which TSL to auto-import, which TSA presets
+        to show, and what to default to in new operations.
+        """
+        cc = (self.country or "").upper()
+        if cc in LOTL_COUNTRIES:
+            return cc
+        return default_country_from_locale()
+
     def active_countries(self) -> list[str]:
         """Return the country codes whose trust store the verifier should load.
 
-        If the user hasn't customised the list, falls back to the
-        locale-derived default (one country). The returned list always
-        contains at least one entry.
+        If the user hasn't customised the list, falls back to the primary
+        country only. The returned list always contains at least one entry.
         """
         if self.tsl_active_countries:
             return list(self.tsl_active_countries)
-        return [default_country_from_locale()]
+        return [self.effective_country()]
 
     def last_import_for(self, country: str) -> str:
         """ISO timestamp of the last import for *country*, or empty string."""
@@ -121,11 +136,11 @@ class Settings:
         """Update the in-memory record after a successful import.
 
         Also mirrors into the legacy ``tsl_last_import`` when *country* is the
-        locale-derived default so the v0.1 read path keeps working.
+        user's primary one so the v0.1 read path keeps working.
         """
         cc = country.upper()
         self.tsl_imports[cc] = iso_timestamp
-        if cc == default_country_from_locale():
+        if cc == self.effective_country():
             self.tsl_last_import = iso_timestamp
 
 
@@ -169,14 +184,18 @@ def load_settings(path: Path | None = None) -> Settings:
     tsl_imports = _parse_tsl_imports(data.get("tsl_imports"))
     tsl_active = _parse_active_countries(data.get("tsl_active_countries"))
 
+    # Country override: only accept it if it's actually in the LOTL.
+    raw_country = str(data.get("country", "")).upper()
+    country = raw_country if raw_country in LOTL_COUNTRIES else ""
+    primary = country or default_country_from_locale()
+
     # Migration: v0.1 wrote only `tsl_last_import` (one timestamp, implicitly
     # Italy). If we see that case, populate the modern fields so future writes
     # use the new schema while leaving the legacy field intact.
     if legacy_last and not tsl_imports:
-        default_cc = default_country_from_locale()
-        tsl_imports = {default_cc: legacy_last}
+        tsl_imports = {primary: legacy_last}
         if not tsl_active:
-            tsl_active = [default_cc]
+            tsl_active = [primary]
 
     return Settings(
         source=data.get("source") if data.get("source") in ("file", "pkcs11") else None,
@@ -187,6 +206,7 @@ def load_settings(path: Path | None = None) -> Settings:
         tsa_url=str(data.get("tsa_url", "")),
         tsa_username=str(data.get("tsa_username", "")),
         tsa_password=str(data.get("tsa_password", "")),
+        country=country,
         tsl_last_import=legacy_last,
         tsl_imports=tsl_imports,
         tsl_active_countries=tsl_active,
