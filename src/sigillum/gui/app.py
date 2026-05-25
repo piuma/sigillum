@@ -375,6 +375,32 @@ class SettingsView(Gtk.Box):
         issues_row.pack_start(issues_btn, False, False, 0)
         page.pack_start(issues_row, False, False, 0)
 
+        credits_title = Gtk.Label(xalign=0)
+        credits_title.set_markup(_("<b>Credits</b>"))
+        page.pack_start(credits_title, False, False, 6)
+
+        credits_grid = Gtk.Grid()
+        credits_grid.set_column_spacing(12)
+        credits_grid.set_row_spacing(4)
+        credits_grid.set_margin_start(12)
+        for row, (role, name, url) in enumerate([
+            (_("Author"),      "Danilo Abbasciano",  "https://piumalab.org"),
+            (_("PAdES/CAdES"), "endesive",           "https://github.com/m32/endesive"),
+            (_("Crypto"),      "cryptography",       "https://cryptography.io"),
+            (_("PKCS#11"),     "PyKCS11",            "https://github.com/LudovicRousseau/PyKCS11"),
+            (_("UI toolkit"),  "GTK 3 / PyGObject",  "https://pygobject.gnome.org"),
+        ]):
+            lbl_role = Gtk.Label(label=role + ":", xalign=1)
+            lbl_role.get_style_context().add_class("dim-label")
+            credits_grid.attach(lbl_role, 0, row, 1, 1)
+            if url:
+                lbl_name = Gtk.LinkButton.new_with_label(url, name)
+                lbl_name.set_halign(Gtk.Align.START)
+            else:
+                lbl_name = Gtk.Label(label=name, xalign=0)
+            credits_grid.attach(lbl_name, 1, row, 1, 1)
+        page.pack_start(credits_grid, False, False, 0)
+
         license_row = Gtk.Label(xalign=0)
         license_row.set_markup(
             _("<small>License: GPL-3.0-or-later · "
@@ -1005,6 +1031,19 @@ class SignView(Gtk.Box):
         self._format_label = Gtk.Label(label=_("Format: —"), xalign=0)
         self.pack_start(self._format_label, False, False, 0)
 
+        # Editable output file name — pre-populated when the source is chosen.
+        out_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        out_row.pack_start(
+            Gtk.Label(label=_("Output file name:"), xalign=0),
+            False, False, 0,
+        )
+        self._sign_output_name = Gtk.Entry()
+        self._sign_output_name.set_placeholder_text(
+            _("<will be filled in when you choose a file>")
+        )
+        out_row.pack_start(self._sign_output_name, True, True, 0)
+        self.pack_start(out_row, False, False, 0)
+
         self.pack_start(Gtk.Separator(), False, False, 6)
 
         # Device description (from settings)
@@ -1224,8 +1263,10 @@ class SignView(Gtk.Box):
         path = chooser.get_filename()
         if not path:
             return
-        fmt = _detect_format(Path(path))
+        doc_path = Path(path)
+        fmt = _detect_format(doc_path)
         self._format_label.set_text(_("Format: {fmt}").format(fmt=fmt))
+        self._sign_output_name.set_text(_default_output_path(doc_path, fmt).name)
         # "Firma visibile" is a PAdES-only feature.
         if fmt == "PAdES":
             self._visible_checkbox.set_sensitive(True)
@@ -1333,7 +1374,15 @@ class SignView(Gtk.Box):
 
         doc_path = Path(doc)
         fmt = _detect_format(doc_path)
-        out_path = _default_output_path(doc_path, fmt)
+        out_name = self._sign_output_name.get_text().strip()
+        if not out_name:
+            _show_error(self._parent, _("Provide the output file name."))
+            return
+        out_path = doc_path.parent / out_name
+        if out_path == doc_path:
+            _show_error(self._parent,
+                        _("The output file is the same as the source — change the name."))
+            return
         level = self._selected_signature_level()
         # T and LT both need a TSA — refuse early with a clear message.
         if level is not SignatureLevel.B and not s.tsa_url:
