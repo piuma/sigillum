@@ -1,34 +1,40 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Danilo Abbasciano <danilo@piumalab.org>
-"""Italian eIDAS Trust List (TSL) importer.
+"""Italian eIDAS Trust List (TSL) importer with XMLDSig signature verification.
 
 Downloads the AgID-maintained TSL (https://eidas.agid.gov.it/TL/TSL-IT.xml),
-extracts the X.509 certificates of currently-active qualified trust services,
-and writes them as two PEM bundles under $XDG_DATA_HOME/sigillum/trusted/:
+verifies the enveloped XMLDSig (ETSI TS 119 612), optionally anchors the
+signing certificate against the EU List of Trusted Lists (LOTL), then extracts
+the X.509 certificates of currently-active qualified trust services and writes
+them as two PEM bundles under $XDG_DATA_HOME/sigillum/trusted/:
   - it-eidas-signing.pem  → CAs for qualified signatures (signers' trust store)
   - it-eidas-tsa.pem      → CAs for qualified timestamp authorities
 
-We do NOT verify the XAdES signature on the TSL itself in this iteration —
-we rely on HTTPS to AgID's endpoint (TOFU). Adding ETSI TS 119 612 signature
-verification is the natural next step for a hardened deployment.
+Signature verification uses lxml for canonical XML (C14N) and the cryptography
+library for the actual RSA/ECDSA check — no external xmlsec binding needed.
 """
 from __future__ import annotations
 
 import base64
+import copy
 import os
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, padding
 
 
 AGID_TSL_URL = "https://eidas.agid.gov.it/TL/TSL-IT.xml"
+EU_LOTL_URL  = "https://ec.europa.eu/tools/lotl/eu-lotl.xml"
 
-_NS = "http://uri.etsi.org/02231/v2#"
+_NS  = "http://uri.etsi.org/02231/v2#"
+_DS  = "http://www.w3.org/2000/09/xmldsig#"
 
 # AgID statuses that mean the service is currently usable.
 _ACTIVE_STATUSES = {
@@ -40,6 +46,21 @@ _ACTIVE_STATUSES = {
 # Everything else goes into the signing bucket. Source: ETSI TS 119 612.
 _TSA_TYPE_SUFFIXES = {"TSA", "QTST", "TSS-QTST"}
 
+# Digest URI → hash algorithm mapping (XMLDSig / xmlenc namespaces).
+_DIGEST_ALGS: dict[str, hashes.HashAlgorithm] = {
+    "http://www.w3.org/2001/04/xmlenc#sha256":          hashes.SHA256(),
+    "http://www.w3.org/2001/04/xmlenc#sha512":          hashes.SHA512(),
+    "http://www.w3.org/2001/04/xmldsig-more#sha384":    hashes.SHA384(),
+    "http://www.w3.org/2000/09/xmldsig#sha1":           hashes.SHA1(),   # legacy
+}
+
+_ENVELOPED_SIG_URI = "http://www.w3.org/2000/09/xmldsig#enveloped-signature"
+_EXC_C14N_URI      = "http://www.w3.org/2001/10/xml-exc-c14n#"
+
+
+class TSLSignatureError(ValueError):
+    """Raised when the TSL XML signature fails verification."""
+
 
 @dataclass
 class TSLImportResult:
@@ -48,10 +69,204 @@ class TSLImportResult:
     when: datetime
     signing_path: Path
     tsa_path: Path
+    signer_cert: x509.Certificate | None = field(default=None, repr=False)
+    signer_trusted: bool = False  # True when LOTL-anchored check passed
 
+
+# ---------------------------------------------------------------------------
+# XMLDSig verification
+# ---------------------------------------------------------------------------
+
+def _c14n(element, *, exclusive: bool) -> bytes:
+    """Return the canonical XML serialisation of *element* (lxml element)."""
+    from lxml import etree as _et
+    return _et.tostring(element, method="c14n", exclusive=exclusive, with_comments=False)
+
+
+def _digest_bytes(data: bytes, alg_uri: str) -> bytes:
+    h_alg = _DIGEST_ALGS.get(alg_uri)
+    if h_alg is None:
+        raise TSLSignatureError(f"Unsupported digest algorithm: {alg_uri}")
+    from cryptography.hazmat.primitives.hashes import Hash
+    from cryptography.hazmat.backends import default_backend
+    d = Hash(h_alg, default_backend())
+    d.update(data)
+    return d.finalize()
+
+
+def verify_tsl_signature(
+    xml_bytes: bytes,
+    trusted_certs: list[x509.Certificate] | None = None,
+) -> x509.Certificate:
+    """Verify the enveloped XMLDSig signature on a TSL document.
+
+    1. Locates the embedded <ds:Signature> element.
+    2. Checks each <ds:Reference> digest (document integrity).
+    3. Verifies the signature value over the canonicalised <ds:SignedInfo>.
+    4. If *trusted_certs* is given, confirms the signing certificate matches
+       one of them (EU LOTL-anchored trust check).
+
+    Returns the signing certificate.
+    Raises TSLSignatureError on any failure.
+    """
+    try:
+        from lxml import etree as _et
+    except ImportError:  # pragma: no cover
+        raise RuntimeError("lxml is required for TSL signature verification: pip install lxml")
+
+    try:
+        root = _et.fromstring(xml_bytes)
+    except _et.XMLSyntaxError as exc:
+        raise TSLSignatureError(f"XML parse error: {exc}") from exc
+
+    # --- locate <ds:Signature> ---
+    sig_el = root.find(f".//{{{_DS}}}Signature")
+    if sig_el is None:
+        raise TSLSignatureError("No <ds:Signature> element found in TSL")
+
+    # --- extract signing certificate ---
+    x509_els = sig_el.findall(f".//{{{_DS}}}X509Certificate")
+    x509_text = next((e.text for e in x509_els if e.text), None)
+    if not x509_text:
+        raise TSLSignatureError("No X509Certificate in Signature KeyInfo")
+    try:
+        signing_cert = x509.load_der_x509_certificate(
+            base64.b64decode("".join(x509_text.split()))
+        )
+    except Exception as exc:
+        raise TSLSignatureError(f"Cannot decode signing certificate: {exc}") from exc
+
+    # --- optional trust-anchor check against caller-supplied set ---
+    if trusted_certs is not None:
+        fp = signing_cert.fingerprint(hashes.SHA256())
+        if fp not in {c.fingerprint(hashes.SHA256()) for c in trusted_certs}:
+            raise TSLSignatureError(
+                "TSL signing certificate not in trusted set "
+                f"(signer: {signing_cert.subject.rfc4514_string()!r})"
+            )
+
+    # --- parse SignedInfo ---
+    signed_info = sig_el.find(f"{{{_DS}}}SignedInfo")
+    if signed_info is None:
+        raise TSLSignatureError("<ds:SignedInfo> element missing")
+
+    c14n_method_el = signed_info.find(f"{{{_DS}}}CanonicalizationMethod")
+    c14n_alg = (c14n_method_el.get("Algorithm") or "") if c14n_method_el is not None else ""
+    si_exclusive = _EXC_C14N_URI in c14n_alg
+
+    # --- verify each Reference ---
+    for ref in signed_info.findall(f"{{{_DS}}}Reference"):
+        uri = ref.get("URI", "")
+        transforms = [
+            t.get("Algorithm", "")
+            for t in ref.findall(f"{{{_DS}}}Transforms/{{{DS}}}Transform".replace(
+                "{DS}", f"{{{_DS}}}"
+            ))
+        ]
+
+        if uri == "":
+            # Reference to the whole document.
+            node = copy.deepcopy(root)
+            if any(_ENVELOPED_SIG_URI in t for t in transforms):
+                for s in node.findall(f".//{{{_DS}}}Signature"):
+                    parent = s.getparent()
+                    if parent is not None:
+                        parent.remove(s)
+        elif uri.startswith("#"):
+            id_val = uri[1:]
+            matches = (
+                root.xpath(f'//*[@Id="{id_val}"]')
+                or root.xpath(f'//*[@id="{id_val}"]')
+                or root.xpath(f'//*[@ID="{id_val}"]')
+            )
+            if not matches:
+                raise TSLSignatureError(f"Reference URI {uri!r}: ID not found")
+            node = matches[0]
+        else:
+            raise TSLSignatureError(f"Unsupported Reference URI: {uri!r}")
+
+        ref_exclusive = any(_EXC_C14N_URI in t for t in transforms)
+        data = _c14n(node, exclusive=ref_exclusive)
+
+        digest_el = ref.find(f"{{{_DS}}}DigestMethod")
+        d_alg = (digest_el.get("Algorithm") or "") if digest_el is not None else ""
+        expected_text = (ref.findtext(f"{{{_DS}}}DigestValue") or "").strip()
+        expected = base64.b64decode("".join(expected_text.split()))
+        actual = _digest_bytes(data, d_alg)
+        if actual != expected:
+            raise TSLSignatureError(
+                f"Reference digest mismatch (URI={uri!r}): "
+                f"expected {expected.hex()[:16]}…, got {actual.hex()[:16]}…"
+            )
+
+    # --- verify signature value over C14N(SignedInfo) ---
+    sig_method_el = signed_info.find(f"{{{_DS}}}SignatureMethod")
+    sig_alg = (sig_method_el.get("Algorithm") or "") if sig_method_el is not None else ""
+
+    si_c14n = _c14n(signed_info, exclusive=si_exclusive)
+
+    raw_sig_text = (sig_el.findtext(f"{{{_DS}}}SignatureValue") or "").strip()
+    raw_sig = base64.b64decode("".join(raw_sig_text.split()))
+
+    pubkey = signing_cert.public_key()
+    sig_alg_l = sig_alg.lower()
+
+    if "sha512" in sig_alg_l:
+        h_alg: hashes.HashAlgorithm = hashes.SHA512()
+    elif "sha384" in sig_alg_l:
+        h_alg = hashes.SHA384()
+    else:
+        h_alg = hashes.SHA256()
+
+    try:
+        if "ecdsa" in sig_alg_l or ("ec" in sig_alg_l and "rsa" not in sig_alg_l):
+            pubkey.verify(raw_sig, si_c14n, ec.ECDSA(h_alg))
+        else:
+            pubkey.verify(raw_sig, si_c14n, padding.PKCS1v15(), h_alg)
+    except InvalidSignature as exc:
+        raise TSLSignatureError("TSL XMLDSig cryptographic verification failed") from exc
+    except Exception as exc:
+        raise TSLSignatureError(f"TSL signature verification error: {exc}") from exc
+
+    return signing_cert
+
+
+# ---------------------------------------------------------------------------
+# EU LOTL helpers
+# ---------------------------------------------------------------------------
+
+def fetch_it_tsl_signers_from_lotl(lotl_bytes: bytes) -> list[x509.Certificate]:
+    """Extract the certificates trusted to sign the Italian TSL from the EU LOTL.
+
+    The EU LOTL (https://ec.europa.eu/tools/lotl/eu-lotl.xml) contains one
+    <OtherTSLPointer> per member state, each carrying the signing certificates
+    accepted for that country's national TSL.
+    """
+    root = ET.fromstring(lotl_bytes)
+    certs: list[x509.Certificate] = []
+
+    for pointer in root.iter(f"{{{_NS}}}OtherTSLPointer"):
+        territory = pointer.findtext(f".//{{{_NS}}}SchemeTerritory")
+        if territory != "IT":
+            continue
+        for x509_el in pointer.iter(f"{{{_NS}}}X509Certificate"):
+            if not x509_el.text:
+                continue
+            try:
+                der = base64.b64decode("".join(x509_el.text.split()))
+                certs.append(x509.load_der_x509_certificate(der))
+            except Exception:  # noqa: BLE001
+                continue
+
+    return certs
+
+
+# ---------------------------------------------------------------------------
+# Core parse / save / import
+# ---------------------------------------------------------------------------
 
 def fetch_tsl(url: str = AGID_TSL_URL, timeout: float = 30.0) -> bytes:
-    """Download the TSL XML. Caller handles network errors."""
+    """Download a TSL or LOTL document. Caller handles network errors."""
     with urllib.request.urlopen(url, timeout=timeout) as response:
         return response.read()
 
@@ -115,9 +330,40 @@ def save_certs_as_pem(certs: list[x509.Certificate], path: Path) -> None:
     os.replace(tmp, path)
 
 
-def import_agid_tsl(url: str = AGID_TSL_URL) -> TSLImportResult:
-    """Full flow: fetch, parse, save. Caller handles network/parse errors."""
+def import_agid_tsl(
+    url: str = AGID_TSL_URL,
+    *,
+    verify_signature: bool = True,
+    lotl_url: str = EU_LOTL_URL,
+) -> TSLImportResult:
+    """Full flow: fetch, verify XMLDSig, parse, save.
+
+    When *verify_signature=True* (the default) the enveloped XMLDSig on the
+    TSL is verified cryptographically. If the EU LOTL is reachable the signing
+    certificate is also cross-checked against it (LOTL-anchored trust). If the
+    LOTL fetch fails, only the mathematical signature check is performed and
+    *signer_trusted* is set to False in the result.
+
+    Raises TSLSignatureError if *verify_signature=True* and the signature is
+    invalid, or if the signer is not in the LOTL when the LOTL is available.
+    """
     xml_bytes = fetch_tsl(url)
+
+    signer_cert: x509.Certificate | None = None
+    signer_trusted = False
+
+    if verify_signature:
+        lotl_trusted: list[x509.Certificate] | None = None
+        if lotl_url:
+            try:
+                lotl_bytes = fetch_tsl(lotl_url)
+                lotl_trusted = fetch_it_tsl_signers_from_lotl(lotl_bytes)
+            except Exception:  # noqa: BLE001 — network/parse errors are non-fatal here
+                lotl_trusted = None
+
+        signer_cert = verify_tsl_signature(xml_bytes, trusted_certs=lotl_trusted)
+        signer_trusted = lotl_trusted is not None  # cert matched LOTL (or no LOTL → False)
+
     signing, tsa = parse_tsl(xml_bytes)
     sp, tp = signing_pem_path(), tsa_pem_path()
     save_certs_as_pem(signing, sp)
@@ -128,6 +374,8 @@ def import_agid_tsl(url: str = AGID_TSL_URL) -> TSLImportResult:
         when=datetime.now(timezone.utc),
         signing_path=sp,
         tsa_path=tp,
+        signer_cert=signer_cert,
+        signer_trusted=signer_trusted,
     )
 
 

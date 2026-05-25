@@ -2434,8 +2434,16 @@ class SigillumWindow(Gtk.ApplicationWindow):
                 current = load_settings()
                 current.tsl_last_import = result.when.isoformat()
                 save_settings(current)
-                message = _("{n_sign} signing CAs, {n_tsa} TSA CAs").format(
-                    n_sign=result.signing_count, n_tsa=result.tsa_count
+                if result.signer_trusted:
+                    sig_note = _("✓ signature verified (LOTL-anchored)")
+                elif result.signer_cert is not None:
+                    sig_note = _("✓ signature verified (no LOTL)")
+                else:
+                    sig_note = _("⚠ signature not verified")
+                message = _("{n_sign} signing CAs, {n_tsa} TSA CAs — {sig}").format(
+                    n_sign=result.signing_count,
+                    n_tsa=result.tsa_count,
+                    sig=sig_note,
                 )
                 ok = True
             except Exception as ex:  # noqa: BLE001 — reported via UI

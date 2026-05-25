@@ -554,6 +554,11 @@ def _cmd_tsl_import(args) -> int:
     print(_("Signing CAs: {n} → {path}").format(n=result.signing_count, path=result.signing_path))
     print(_("TSA CAs:     {n} → {path}").format(n=result.tsa_count, path=result.tsa_path))
     print(_("Last import: {when}").format(when=result.when.isoformat()))
+    if result.signer_trusted:
+        print(_("Signature:   verified (LOTL-anchored)"))
+    elif result.signer_cert is not None:
+        subj = result.signer_cert.subject.rfc4514_string()
+        print(_("Signature:   verified — signer: {subj}").format(subj=subj))
     return 0
 
 

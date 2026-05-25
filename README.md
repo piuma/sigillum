@@ -27,12 +27,12 @@ Available Features:
 - Import of the AgID Trust List (TSL) in local PEM bundles for validation of the signer chain and qualified Italian TSAs
 - Background auto-refresh of the TSL at startup if missing or older than 30 days
 - Validation of the cert chain via manual walker (necessary because qualified Italian certs often do not have the required `subjectAltName`) (`cryptography.PolicyBuilder`)
+- XMLDSig verification of the TSL signature with optional EU LOTL-anchored trust check (ETSI TS 119 612)
 
 Current limitations:
 
 - LTA levels not yet implemented in the signer
 - The `sigillum.core.tsa` module is a stub: signature timestamping is passed through `endesive`; The standalone timestamp (`.tsr` / `.tsd`) is in `sigillum.core.timestamp`
-- TSL XML is not cryptographically validated (HTTPS is trusted to AgID — TOFU)
 
 [Contributing Guide](contributing.md)
 
