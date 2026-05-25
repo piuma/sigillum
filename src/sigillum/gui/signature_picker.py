@@ -1,9 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-<<<<<<< HEAD
 # Copyright (C) 2026 Danilo Abbasciano <danilo@piumalab.org>
-=======
-# Copyright (C) 2026 Danilo Abbasciano <danilo.abbasciano@par-tec.it>
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
 """Modal dialog: render a PDF page and let the user drag a rectangle on it.
 
 Used by `SignView` to give the user a graphical way to choose where the

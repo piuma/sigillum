@@ -1,9 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-<<<<<<< HEAD
 # Copyright (C) 2026 Danilo Abbasciano <danilo@piumalab.org>
-=======
-# Copyright (C) 2026 Danilo Abbasciano <danilo.abbasciano@par-tec.it>
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
 """Auto-detection of PKCS#11 drivers and tokens.
 
 Iterates a curated list of well-known driver paths, tries to load each one,

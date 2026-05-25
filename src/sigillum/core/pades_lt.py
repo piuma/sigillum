@@ -1,9 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-<<<<<<< HEAD
 # Copyright (C) 2026 Danilo Abbasciano <danilo@piumalab.org>
-=======
-# Copyright (C) 2026 Danilo Abbasciano <danilo.abbasciano@par-tec.it>
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
 """PAdES Long-Term: build a Document Security Store (DSS) and append it to a
 signed PDF via an *incremental update*.
 

@@ -1,9 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-<<<<<<< HEAD
 # Copyright (C) 2026 Danilo Abbasciano <danilo@piumalab.org>
-=======
-# Copyright (C) 2026 Danilo Abbasciano <danilo.abbasciano@par-tec.it>
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
 """Test live: firma livello T contro FreeTSA per PAdES e CAdES.
 
 Richiede rete (https://freetsa.org/tsr). Salta in modo silenzioso se la TSA

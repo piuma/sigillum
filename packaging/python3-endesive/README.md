@@ -22,7 +22,6 @@ reportbug --no-config-files wnpp
 # Subject:  ITP: python3-endesive -- ...
 # Severity: wishlist
 
-<<<<<<< HEAD
 # 2. Get the upstream tarball. NOTE: endesive ships wheel-only on PyPI
 #    (no sdist), so the tarball must come from GitHub by tag.
 VERSION=2.19.3
@@ -48,28 +47,6 @@ lintian ../python3-endesive_${VERSION}-1_all.deb
 dpkg -i ../python3-endesive_${VERSION}-1_all.deb || apt install -f -y
 
 # 7. Find a sponsor, upload via mentors.debian.net:
-=======
-# 2. Get the upstream tarball.
-mkdir -p ~/work/endesive && cd ~/work/endesive
-uscan --download-current-version  # or curl from PyPI:
-#   pip download --no-binary=:all: --no-deps endesive
-#   mv endesive-*.tar.gz endesive_2.17.0.orig.tar.gz
-
-# 3. Extract and copy this debian/ over:
-tar xf endesive_2.17.0.orig.tar.gz
-cd endesive-2.17.0
-cp -r /home/piuma/prog/sigilum/packaging/python3-endesive/debian .
-
-# 4. Refresh the changelog with your name/email:
-debchange --create --package python3-endesive --newversion 2.17.0-1 \
-    --distribution unstable "Initial Debian release (Closes: #ITP-NUM)."
-
-# 5. Build:
-dpkg-buildpackage -us -uc -b
-lintian ../python3-endesive_2.17.0-1_all.deb
-
-# 6. Find a sponsor, upload via mentors.debian.net:
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
 #    https://wiki.debian.org/Mentors
 ```
 

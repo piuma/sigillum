@@ -1,9 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-<<<<<<< HEAD
 # Copyright (C) 2026 Danilo Abbasciano <danilo@piumalab.org>
-=======
-# Copyright (C) 2026 Danilo Abbasciano <danilo.abbasciano@par-tec.it>
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
 """XAdES Long-Term: enrich a T-level XAdES signature with the validation
 material required for offline verification years later (ETSI EN 319 132-1,
 clause 5.5.1 — the BES-LT level).

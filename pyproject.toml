@@ -5,11 +5,28 @@ build-backend = "hatchling.build"
 [project]
 name = "sigillum"
 version = "0.1.0"
-description = "Firma digitale PAdES/CAdES/XAdES con token hardware e certificati su file"
+description = "PAdES/CAdES/XAdES digital signing with hardware tokens and file certificates"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "GPL-3.0-or-later" }
-authors = [{ name = "Danilo Abbasciano" }]
+authors = [{ name = "Danilo Abbasciano", email = "danilo@piumalab.org" }]
+keywords = ["digital-signature", "pades", "cades", "xades", "pkcs11", "pdf", "esignature"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Environment :: X11 Applications :: GTK",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Office/Business",
+]
+
 dependencies = [
     "endesive>=2.17.0",
     "PyKCS11>=1.5.15",
@@ -18,6 +35,11 @@ dependencies = [
     "PyGObject>=3.46",
     "requests>=2.31",
 ]
+
+[project.urls]
+Homepage = "https://github.com/piumalab/sigillum"
+"Bug Tracker" = "https://github.com/piumalab/sigillum/issues"
+Changelog = "https://github.com/piumalab/sigillum/releases"
 
 [project.optional-dependencies]
 dev = [
