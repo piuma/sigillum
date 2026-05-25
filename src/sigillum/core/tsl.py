@@ -34,6 +34,7 @@ AGID_TSL_URL = "https://eidas.agid.gov.it/TL/TSL-IT.xml"
 EU_LOTL_URL  = "https://ec.europa.eu/tools/lotl/eu-lotl.xml"
 
 _NS  = "http://uri.etsi.org/02231/v2#"
+_ADDT = "http://uri.etsi.org/02231/v2/additionaltypes#"
 _DS  = "http://www.w3.org/2000/09/xmldsig#"
 
 # AgID statuses that mean the service is currently usable.
@@ -235,21 +236,52 @@ def verify_tsl_signature(
 # EU LOTL helpers
 # ---------------------------------------------------------------------------
 
-def fetch_it_tsl_signers_from_lotl(lotl_bytes: bytes) -> list[x509.Certificate]:
-    """Extract the certificates trusted to sign the Italian TSL from the EU LOTL.
+@dataclass
+class TSLPointer:
+    """One <OtherTSLPointer> entry from the EU LOTL.
 
-    The EU LOTL (https://ec.europa.eu/tools/lotl/eu-lotl.xml) contains one
-    <OtherTSLPointer> per member state, each carrying the signing certificates
-    accepted for that country's national TSL.
+    Carries everything needed to fetch and authenticate a national TSL: the
+    country (ISO-3166 alpha-2), the URL of the TSL document, its declared
+    MIME type, and the certificates trusted to sign it (used as anchors when
+    verifying its XMLDSig).
+    """
+    country: str
+    tsl_url: str
+    mime_type: str = ""
+    signing_certs: list[x509.Certificate] = field(default_factory=list, repr=False)
+
+    @property
+    def is_xml(self) -> bool:
+        """True if this pointer references an XML TSL we can actually parse.
+
+        The MIME type is authoritative when present (``application/vnd.etsi.tsl+xml``).
+        We fall back to the URL suffix for entries that omit it — some TSPs
+        publish the XML with ``.xtsl`` instead of ``.xml``.
+        """
+        if "xml" in self.mime_type.lower():
+            return True
+        lower = self.tsl_url.lower()
+        return lower.endswith((".xml", ".xtsl"))
+
+
+def parse_lotl(lotl_bytes: bytes) -> list[TSLPointer]:
+    """Scan the EU LOTL and return every <OtherTSLPointer> as a TSLPointer.
+
+    The result is raw — both XML and PDF pointers are returned, and the EU
+    self-reference is included. Callers that want only usable national XML
+    TSLs should use :func:`usable_national_tsls`.
     """
     root = ET.fromstring(lotl_bytes)
-    certs: list[x509.Certificate] = []
+    pointers: list[TSLPointer] = []
 
-    for pointer in root.iter(f"{{{_NS}}}OtherTSLPointer"):
-        territory = pointer.findtext(f".//{{{_NS}}}SchemeTerritory")
-        if territory != "IT":
+    for p in root.iter(f"{{{_NS}}}OtherTSLPointer"):
+        territory = (p.findtext(f".//{{{_NS}}}SchemeTerritory") or "").strip()
+        tsl_url = (p.findtext(f"{{{_NS}}}TSLLocation") or "").strip()
+        if not territory or not tsl_url:
             continue
-        for x509_el in pointer.iter(f"{{{_NS}}}X509Certificate"):
+        mime = (p.findtext(f".//{{{_ADDT}}}MimeType") or "").strip()
+        certs: list[x509.Certificate] = []
+        for x509_el in p.iter(f"{{{_NS}}}X509Certificate"):
             if not x509_el.text:
                 continue
             try:
@@ -257,8 +289,49 @@ def fetch_it_tsl_signers_from_lotl(lotl_bytes: bytes) -> list[x509.Certificate]:
                 certs.append(x509.load_der_x509_certificate(der))
             except Exception:  # noqa: BLE001
                 continue
+        pointers.append(
+            TSLPointer(country=territory, tsl_url=tsl_url, mime_type=mime, signing_certs=certs)
+        )
 
-    return certs
+    return pointers
+
+
+def usable_national_tsls(lotl_bytes: bytes) -> dict[str, TSLPointer]:
+    """Filtered LOTL view: one usable XML pointer per member state.
+
+    Drops the EU self-reference (``SchemeTerritory == "EU"``) and PDF copies.
+    Keyed by uppercase country code so callers can do ``pointers["DE"]``.
+    """
+    out: dict[str, TSLPointer] = {}
+    for p in parse_lotl(lotl_bytes):
+        cc = p.country.upper()
+        if cc == "EU":
+            continue  # the LOTL referencing itself, not a member state
+        if not p.is_xml:
+            continue
+        # First XML pointer wins; the LOTL never lists two XML TSLs per country
+        # in practice, but be defensive.
+        out.setdefault(cc, p)
+    return out
+
+
+def find_country_pointer(lotl_bytes: bytes, country: str) -> TSLPointer | None:
+    """Return the usable XML pointer for *country*, or None if absent."""
+    return usable_national_tsls(lotl_bytes).get(country.upper())
+
+
+def fetch_country_tsl_signers_from_lotl(
+    lotl_bytes: bytes,
+    country: str = "IT",
+) -> list[x509.Certificate]:
+    """Extract the certificates trusted to sign *country*'s national TSL."""
+    pointer = find_country_pointer(lotl_bytes, country)
+    return pointer.signing_certs if pointer is not None else []
+
+
+def fetch_it_tsl_signers_from_lotl(lotl_bytes: bytes) -> list[x509.Certificate]:
+    """Italy-specific shortcut, kept for backward compatibility."""
+    return fetch_country_tsl_signers_from_lotl(lotl_bytes, "IT")
 
 
 # ---------------------------------------------------------------------------
