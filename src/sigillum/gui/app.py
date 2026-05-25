@@ -71,8 +71,6 @@ from sigillum.core.timestamp import (
 from sigillum.core.tsl import (
     AGID_TSL_URL,
     import_age_days,
-    import_agid_tsl,
-    load_pem_bundle,
     signing_pem_path,
     tsa_pem_path,
 )
@@ -873,10 +871,11 @@ class SettingsView(Gtk.Box):
         self._tsl_import_button.set_sensitive(not busy)
         if busy:
             self._tsl_age_label.set_markup(
-                _("<i>Refreshing AgID TSL…</i>")
+                _("<i>Refreshing national TSL…</i>")
             )
         else:
-            self._refresh_tsl_age(load_settings().tsl_last_import)
+            s = load_settings()
+            self._refresh_tsl_age(s.last_import_for(s.effective_country()))
 
     def _refresh_tsl_age(self, iso_timestamp: str):
         days = import_age_days(iso_timestamp)
@@ -942,36 +941,37 @@ class SettingsView(Gtk.Box):
         # set_filename / unselect_all don't fire `file-set`, so refresh manually.
         self._refresh_preview()
 
-        # TSL age
-        self._refresh_tsl_age(s.tsl_last_import)
+        # TSL age — for the primary country
+        self._refresh_tsl_age(s.last_import_for(s.effective_country()))
 
         self._device_status.set_text(_("Configured: {value}").format(value=s.describe()))
 
     def _collect(self) -> Settings | None:
-        tsa_url = self._tsa_url.get_text().strip()
-        tsa_username = self._tsa_username.get_text()
-        tsa_password = self._tsa_password.get_text()
-        # The TSL last-import timestamp is managed by the import button only —
-        # preserve whatever is already in the on-disk settings.
-        previous = load_settings()
-        tsl_ts = previous.tsl_last_import
-        # Position is chosen at sign time, not here — preserve the last value
-        # so it remains the default for new SignView sessions.
-        signature_position = previous.signature_position
-        signature_image = self._vis_sig_image.get_filename() or ""
+        """Build a Settings from the UI controls.
+
+        We start from a copy of the on-disk settings so anything the
+        SettingsView doesn't expose (TSL timestamps, country choice,
+        active-countries list, signature position) is preserved verbatim.
+        Only the fields actually editable here are overwritten.
+        """
+        from copy import deepcopy
+        s = deepcopy(load_settings())
+        s.tsa_url = self._tsa_url.get_text().strip()
+        s.tsa_username = self._tsa_username.get_text()
+        s.tsa_password = self._tsa_password.get_text()
+        s.signature_image = self._vis_sig_image.get_filename() or ""
 
         if self._radio_file.get_active():
             cert = self._cert_chooser.get_filename()
             if not cert:
                 _show_error(self._parent, _("Select a certificate file."))
                 return None
-            return Settings(
-                source="file", file_path=cert,
-                tsa_url=tsa_url, tsa_username=tsa_username, tsa_password=tsa_password,
-                tsl_last_import=tsl_ts,
-                signature_position=signature_position,
-                signature_image=signature_image,
-            )
+            s.source = "file"
+            s.file_path = cert
+            s.pkcs11_library = ""
+            s.pkcs11_cert_id = ""
+            s.pkcs11_cert_subject = ""
+            return s
 
         # pkcs11
         lib = self._pkcs11_lib.get_text().strip()
@@ -980,36 +980,20 @@ class SettingsView(Gtk.Box):
             return None
 
         active = self._token_cert_combo.get_active()
-        # If the combo wasn't populated this session, fall back to the previously
-        # saved cert (so re-opening Impostazioni and Save again doesn't wipe it).
+        s.source = "pkcs11"
+        s.file_path = ""
+        s.pkcs11_library = lib
+        # If the combo wasn't populated this session, keep whatever was saved
+        # before (so re-opening Settings and saving again doesn't wipe it).
         if active < 0 or active >= len(self._token_cert_ids):
-            if (previous.source == "pkcs11" and previous.pkcs11_library == lib
-                    and previous.pkcs11_cert_id):
-                return Settings(
-                    source="pkcs11", pkcs11_library=lib,
-                    pkcs11_cert_id=previous.pkcs11_cert_id,
-                    pkcs11_cert_subject=previous.pkcs11_cert_subject,
-                    tsa_url=tsa_url,
-                    tsa_username=tsa_username, tsa_password=tsa_password,
-                    tsl_last_import=tsl_ts,
-                    signature_position=signature_position,
-                    signature_image=signature_image,
-                )
-            _show_error(self._parent,
-                        _("Press refresh and choose a certificate on the token."))
-            return None
-
-        return Settings(
-            source="pkcs11",
-            pkcs11_library=lib,
-            pkcs11_cert_id=self._token_cert_ids[active],
-            pkcs11_cert_subject=self._token_cert_subjects[active],
-            tsa_url=tsa_url,
-            tsa_username=tsa_username, tsa_password=tsa_password,
-            tsl_last_import=tsl_ts,
-            signature_position=signature_position,
-            signature_image=signature_image,
-        )
+            if not s.pkcs11_cert_id:
+                _show_error(self._parent,
+                            _("Press refresh and choose a certificate on the token."))
+                return None
+        else:
+            s.pkcs11_cert_id = self._token_cert_ids[active]
+            s.pkcs11_cert_subject = self._token_cert_subjects[active]
+        return s
 
 
 # =====================================================================
@@ -2152,10 +2136,11 @@ class VerifyView(Gtk.Box):
         The default behavior is to use the imported TSL bundles automatically;
         the checkbox in the expander only needs to be touched to opt out.
         """
-        signing_exists = signing_pem_path().exists()
-        tsa_exists = tsa_pem_path().exists()
         s = load_settings()
-        days = import_age_days(s.tsl_last_import)
+        primary = s.effective_country()
+        signing_exists = signing_pem_path(primary).exists()
+        tsa_exists = tsa_pem_path(primary).exists()
+        days = import_age_days(s.last_import_for(primary))
 
         # Stale or missing → show the inline "Importa ora" button.
         stale = (days is None) or (days > TSL_STALE_AFTER_DAYS)
@@ -2164,7 +2149,7 @@ class VerifyView(Gtk.Box):
             self._use_tsl_check.set_sensitive(False)
             self._tsl_status.set_markup(
                 _("<small>Trust store: <span foreground='#c33'>"
-                  "AgID TSL not imported.</span></small>")
+                  "{cc} TSL not imported.</span></small>").format(cc=primary)
             )
             self._tsl_import_now.set_visible(True)
             return
@@ -2174,18 +2159,21 @@ class VerifyView(Gtk.Box):
         if not self._use_tsl_check.get_active():
             self._use_tsl_check.set_active(True)
 
+        active_cc = ", ".join(s.active_countries())
         if days is None:
             self._tsl_status.set_markup(
-                _("<small>Trust store: AgID TSL (import date unknown).</small>")
+                _("<small>Trust store: {cc} TSL (import date unknown).</small>").format(cc=active_cc)
             )
         elif days <= TSL_STALE_AFTER_DAYS:
             self._tsl_status.set_markup(
-                _("<small>Trust store: AgID TSL, imported {days} days ago.</small>").format(days=days)
+                _("<small>Trust store: {cc} TSL, primary imported {days} days ago.</small>").format(
+                    cc=active_cc, days=days)
             )
         else:
             self._tsl_status.set_markup(
                 _("<small>Trust store: <span foreground='#c33'>"
-                  "AgID TSL from {days} days ago — refresh it.</span></small>").format(days=days)
+                  "{cc} TSL from {days} days ago — refresh it.</span></small>").format(
+                    cc=active_cc, days=days)
             )
         self._tsl_import_now.set_visible(stale)
 
@@ -2237,10 +2225,15 @@ class VerifyView(Gtk.Box):
         if tsa_trusted is None:
             return
 
-        # Augment with the imported AgID TSL bundles if requested.
+        # Augment with the imported national TSL bundles if requested —
+        # union across every country in Settings.active_countries().
         if self._use_tsl_check.get_active():
-            trusted = trusted + load_pem_bundle(signing_pem_path())
-            tsa_trusted = tsa_trusted + load_pem_bundle(tsa_pem_path())
+            from sigillum.core.tsl import load_active_trust_stores
+            tsl_signing, tsl_tsa = load_active_trust_stores(
+                load_settings().active_countries()
+            )
+            trusted = trusted + tsl_signing
+            tsa_trusted = tsa_trusted + tsl_tsa
 
         # TSR / TSD don't go through the Signer/Verifier abstraction (they
         # aren't document signatures, just timestamps). Use the dedicated
@@ -2405,23 +2398,29 @@ class SigillumWindow(Gtk.ApplicationWindow):
     # ----- TSL refresh coordinator -----
 
     def _maybe_auto_refresh_tsl(self) -> bool:
-        """Trigger a silent background refresh if the TSL is missing or stale."""
-        days = import_age_days(load_settings().tsl_last_import)
+        """Trigger a silent background refresh if the primary country's TSL
+        is missing or stale."""
+        s = load_settings()
+        primary = s.effective_country()
+        days = import_age_days(s.last_import_for(primary))
         if days is None or days > TSL_STALE_AFTER_DAYS:
-            self.start_tsl_refresh(silent=True)
+            self.start_tsl_refresh(silent=True, country=primary)
         return False  # one-shot idle source
 
-    def start_tsl_refresh(self, silent: bool = False):
-        """Run an AgID TSL import in a background thread.
+    def start_tsl_refresh(self, silent: bool = False, country: str | None = None):
+        """Run a national TSL import in a background thread.
 
-        Re-entrant: if a refresh is already running, this is a no-op so two
-        triggers (auto + manual) don't race. `silent=True` suppresses error
-        dialogs — used by the at-startup auto-refresh, where the user did
-        not explicitly ask for an update and a network failure is no big
-        deal (they can retry from the UI later).
+        *country* defaults to the user's primary country. Re-entrant: if a
+        refresh is already running, this is a no-op so two triggers (auto +
+        manual) don't race. ``silent=True`` suppresses error dialogs — used by
+        the at-startup auto-refresh, where the user did not explicitly ask
+        for an update and a network failure is no big deal.
         """
         if self._tsl_refresh_active:
             return
+        from sigillum.core.tsl import import_country_tsl
+
+        cc = (country or load_settings().effective_country()).upper()
         self._tsl_refresh_active = True
         self._settings_view.set_tsl_busy(True)
         self._verify_view.set_tsl_busy(True)
@@ -2430,9 +2429,16 @@ class SigillumWindow(Gtk.ApplicationWindow):
 
         def worker():
             try:
-                result = import_agid_tsl()
+                result = import_country_tsl(cc)
                 current = load_settings()
-                current.tsl_last_import = result.when.isoformat()
+                current.record_import(result.country, result.when.isoformat())
+                # First import of a fresh country auto-enables it for verify.
+                if (
+                    result.country not in current.tsl_active_countries
+                    and result.country == current.effective_country()
+                ):
+                    if not current.tsl_active_countries:
+                        current.tsl_active_countries = [result.country]
                 save_settings(current)
                 if result.signer_trusted:
                     sig_note = _("✓ signature verified (LOTL-anchored)")
@@ -2440,7 +2446,8 @@ class SigillumWindow(Gtk.ApplicationWindow):
                     sig_note = _("✓ signature verified (no LOTL)")
                 else:
                     sig_note = _("⚠ signature not verified")
-                message = _("{n_sign} signing CAs, {n_tsa} TSA CAs — {sig}").format(
+                message = _("{cc}: {n_sign} signing CAs, {n_tsa} TSA CAs — {sig}").format(
+                    cc=result.country,
                     n_sign=result.signing_count,
                     n_tsa=result.tsa_count,
                     sig=sig_note,

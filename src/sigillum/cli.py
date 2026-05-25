@@ -75,9 +75,15 @@ def _load_trusted_pem(path: Path) -> list[x509.Certificate]:
 
 
 def _default_trust_stores() -> tuple[list[x509.Certificate], list[x509.Certificate]]:
-    """Read the AgID TSL bundles, returning ([signing CAs], [TSA CAs])."""
-    from .core.tsl import signing_pem_path, tsa_pem_path, load_pem_bundle
-    return load_pem_bundle(signing_pem_path()), load_pem_bundle(tsa_pem_path())
+    """Read the union of TSL bundles for all active countries.
+
+    Returns ``([signing CAs], [TSA CAs])`` — the union of every country listed
+    in ``Settings.active_countries()`` (falls back to the locale-derived
+    primary country when nothing has been customised).
+    """
+    from .core.settings import load_settings
+    from .core.tsl import load_active_trust_stores
+    return load_active_trust_stores(load_settings().active_countries())
 
 
 def _resolve_credential_from_args(args, settings):
@@ -537,20 +543,29 @@ def _cmd_decrypt(args) -> int:
 # ---------------------------------------------------------------------------
 
 def _cmd_tsl_import(args) -> int:
-    from datetime import datetime, timezone
+    from .core.settings import load_settings, save_settings, LOTL_COUNTRIES
+    from .core.tsl import import_country_tsl
 
-    from .core.settings import load_settings, save_settings
-    from .core.tsl import import_agid_tsl
+    settings = load_settings()
+    country = (args.country or settings.effective_country()).upper()
+    if country not in LOTL_COUNTRIES:
+        return _err(_("Unknown country code: {cc}").format(cc=country), code=2)
 
     try:
-        result = import_agid_tsl()
+        result = import_country_tsl(country)
     except Exception as ex:  # noqa: BLE001
         return _err(_("TSL import failed: {ex}").format(ex=ex), code=2)
 
-    settings = load_settings()
-    settings.tsl_last_import = datetime.now(timezone.utc).isoformat()
+    settings.record_import(result.country, result.when.isoformat())
+    if result.country not in settings.tsl_active_countries:
+        # First import of a new country → enable it for verification.
+        if not settings.tsl_active_countries:
+            settings.tsl_active_countries = [result.country]
+        else:
+            settings.tsl_active_countries.append(result.country)
     save_settings(settings)
 
+    print(_("Country:     {cc}").format(cc=result.country))
     print(_("Signing CAs: {n} → {path}").format(n=result.signing_count, path=result.signing_path))
     print(_("TSA CAs:     {n} → {path}").format(n=result.tsa_count, path=result.tsa_path))
     print(_("Last import: {when}").format(when=result.when.isoformat()))
@@ -559,6 +574,38 @@ def _cmd_tsl_import(args) -> int:
     elif result.signer_cert is not None:
         subj = result.signer_cert.subject.rfc4514_string()
         print(_("Signature:   verified — signer: {subj}").format(subj=subj))
+    return 0
+
+
+def _cmd_tsl_list(args) -> int:
+    """Show every imported national TSL with its age and active state."""
+    from .core.settings import load_settings
+    from .core.tsl import import_age_days, list_imported_countries
+
+    settings = load_settings()
+    countries = list_imported_countries()
+    if not countries:
+        print(_("No TSL imported. Run: sigillum tsl-import"))
+        return 0
+
+    primary = settings.effective_country()
+    active = set(settings.active_countries())
+
+    for cc in countries:
+        ts = settings.last_import_for(cc)
+        age = import_age_days(ts)
+        markers = []
+        if cc == primary:
+            markers.append(_("primary"))
+        if cc in active:
+            markers.append(_("active"))
+        suffix = f"  [{', '.join(markers)}]" if markers else ""
+        if age is None:
+            print(f"  {cc}: {_('(no timestamp)')}{suffix}")
+        else:
+            print(_("  {cc}: imported {days} days ago ({ts}){suffix}").format(
+                cc=cc, days=age, ts=ts, suffix=suffix,
+            ))
     return 0
 
 
@@ -661,6 +708,8 @@ def _cmd_config(args) -> int:
     settings = load_settings()
 
     if args.action == "show" or args.action is None:
+        primary = settings.effective_country()
+        active = settings.active_countries()
         if args.json:
             payload = {
                 "path": str(settings_path()),
@@ -674,6 +723,13 @@ def _cmd_config(args) -> int:
                 "tsa_password_set": bool(settings.tsa_password),
                 "signature_position": settings.signature_position,
                 "signature_image": settings.signature_image,
+                "country": settings.country,
+                "primary_country": primary,
+                "active_countries": active,
+                "tsl_imports": {
+                    cc: {"timestamp": ts, "age_days": import_age_days(ts)}
+                    for cc, ts in settings.tsl_imports.items()
+                },
                 "tsl_last_import": settings.tsl_last_import,
                 "tsl_age_days": import_age_days(settings.tsl_last_import),
             }
@@ -690,12 +746,17 @@ def _cmd_config(args) -> int:
             pos=settings.signature_position,
             logo=settings.signature_image or _("(none)"),
         ))
-        age = import_age_days(settings.tsl_last_import)
-        if settings.tsl_last_import:
-            print(_("AgID TSL:        {when} ({age} days)").format(
-                when=settings.tsl_last_import, age=age))
+        print(_("Primary country: {cc}").format(cc=primary))
+        print(_("Active for verify: {cc}").format(cc=", ".join(active)))
+        if settings.tsl_imports:
+            for cc in sorted(settings.tsl_imports):
+                ts = settings.tsl_imports[cc]
+                age = import_age_days(ts)
+                age_s = _("{n} days").format(n=age) if age is not None else _("?")
+                print(_("  TSL {cc}:        {when} ({age})").format(
+                    cc=cc, when=ts, age=age_s))
         else:
-            print(_("AgID TSL:        never imported"))
+            print(_("TSL:             never imported"))
         return 0
 
     # action == "set"
@@ -729,6 +790,28 @@ def _cmd_config(args) -> int:
         changed = True
     if args.position is not None:
         settings.signature_position = args.position
+        changed = True
+    if getattr(args, "country", None) is not None:
+        from .core.settings import LOTL_COUNTRIES
+        cc = args.country.strip().upper()
+        if cc == "":
+            settings.country = ""  # clear → fall back to $LANG
+        elif cc in LOTL_COUNTRIES:
+            settings.country = cc
+        else:
+            return _err(_("Unknown country code: {cc}").format(cc=cc))
+        changed = True
+    if getattr(args, "active_countries", None) is not None:
+        from .core.settings import LOTL_COUNTRIES
+        raw = args.active_countries.strip()
+        if raw == "":
+            settings.tsl_active_countries = []
+        else:
+            codes = [c.strip().upper() for c in raw.split(",") if c.strip()]
+            bad = [c for c in codes if c not in LOTL_COUNTRIES]
+            if bad:
+                return _err(_("Unknown country code(s): {bad}").format(bad=", ".join(bad)))
+            settings.tsl_active_countries = codes
         changed = True
 
     if not changed:
@@ -855,9 +938,23 @@ def build_parser() -> argparse.ArgumentParser:
 
     # tsl-import
     p_tsl = sub.add_parser(
-        "tsl-import", help=_("download the AgID Trust List into local bundles"),
+        "tsl-import",
+        help=_("download a national Trust List into local bundles via EU LOTL"),
+    )
+    p_tsl.add_argument(
+        "--country",
+        metavar="CC",
+        default="",
+        help=_("ISO country code (e.g. IT, DE, FR). Defaults to the primary "
+               "country derived from settings or $LANG."),
     )
     p_tsl.set_defaults(func=_cmd_tsl_import)
+
+    # tsl-list
+    p_tsll = sub.add_parser(
+        "tsl-list", help=_("list every imported national Trust List with its age"),
+    )
+    p_tsll.set_defaults(func=_cmd_tsl_list)
 
     # detect
     p_det = sub.add_parser(
@@ -885,6 +982,13 @@ def build_parser() -> argparse.ArgumentParser:
     cfg_set.add_argument("--position", choices=[
         "bottom-right", "bottom-left", "top-right", "top-left",
     ], help=_("corner preset for the visible signature"))
+    cfg_set.add_argument("--country", metavar="CC",
+                         help=_("primary eIDAS country (e.g. IT, DE). "
+                                "Empty string clears it (fall back to $LANG)."))
+    cfg_set.add_argument("--active-countries", metavar="CC,CC",
+                         help=_("comma-separated list of country codes to "
+                                "include in the verification trust store. "
+                                "Empty string falls back to the primary country."))
     p_cfg.set_defaults(func=_cmd_config, action=None, json=False)
 
     # gui

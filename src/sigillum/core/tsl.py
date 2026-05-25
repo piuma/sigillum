@@ -523,3 +523,29 @@ def load_pem_bundle(path: Path) -> list[x509.Certificate]:
         return list(x509.load_pem_x509_certificates(path.read_bytes()))
     except Exception:  # noqa: BLE001
         return []
+
+
+def load_active_trust_stores(
+    active_countries: list[str],
+) -> tuple[list[x509.Certificate], list[x509.Certificate]]:
+    """Load the union of signing-CA and TSA-CA PEM bundles for all active countries.
+
+    Certificates that appear in multiple countries (e.g. cross-recognised CAs)
+    are deduplicated by SHA-256 fingerprint.
+    """
+    signing: list[x509.Certificate] = []
+    tsa: list[x509.Certificate] = []
+    seen_signing: set[bytes] = set()
+    seen_tsa: set[bytes] = set()
+    for cc in active_countries:
+        for c in load_pem_bundle(signing_pem_path(cc)):
+            fp = c.fingerprint(hashes.SHA256())
+            if fp not in seen_signing:
+                seen_signing.add(fp)
+                signing.append(c)
+        for c in load_pem_bundle(tsa_pem_path(cc)):
+            fp = c.fingerprint(hashes.SHA256())
+            if fp not in seen_tsa:
+                seen_tsa.add(fp)
+                tsa.append(c)
+    return signing, tsa
