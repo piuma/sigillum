@@ -1,0 +1,68 @@
+Source: python-endesive
+Section: python
+Priority: optional
+<<<<<<< HEAD
+Maintainer: Danilo Abbasciano <danilo@piumalab.org>
+=======
+Maintainer: Danilo Abbasciano <danilo.abbasciano@par-tec.it>
+>>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-python,
+ pybuild-plugin-pyproject,
+ python3-all,
+ python3-setuptools,
+<<<<<<< HEAD
+ python3-wheel,
+=======
+>>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
+ python3-cryptography <!nocheck>,
+ python3-asn1crypto <!nocheck>,
+ python3-pil <!nocheck>,
+ python3-lxml <!nocheck>,
+<<<<<<< HEAD
+ python3-pykcs11 <!nocheck>,
+ python3-requests <!nocheck>,
+ python3-paramiko <!nocheck>,
+=======
+>>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
+ python3-pytest <!nocheck>,
+Standards-Version: 4.7.0
+Homepage: https://github.com/m32/endesive
+Vcs-Browser: https://salsa.debian.org/python-team/packages/python-endesive
+Vcs-Git: https://salsa.debian.org/python-team/packages/python-endesive.git
+Rules-Requires-Root: no
+
+Package: python3-endesive
+Architecture: all
+Depends:
+ ${python3:Depends},
+ ${misc:Depends},
+ python3-cryptography,
+ python3-asn1crypto,
+ python3-pil,
+ python3-lxml,
+<<<<<<< HEAD
+ python3-pykcs11,
+ python3-requests,
+ python3-paramiko,
+=======
+Recommends:
+ python3-pykcs11,
+>>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
+Description: Python library for PAdES/CAdES/XAdES digital signatures
+ endesive is a pure-Python library implementing the ETSI standards for
+ advanced electronic signatures, with support for both software and
+ hardware (PKCS#11) signing keys.
+ .
+ Supported formats:
+  * PAdES (signed PDF, ETSI EN 319 142)
+  * CAdES (CMS-based signatures, ETSI EN 319 122)
+  * XAdES (XML signatures, ETSI EN 319 132)
+  * S/MIME signed e-mails
+ .
+ Signature levels B (basic) and T (with RFC 3161 timestamp) are
+ supported out of the box; LT-level enrichment is built on top of the
+ base library.
+ .
+ The library is the basis of the Sigillum desktop signing application.

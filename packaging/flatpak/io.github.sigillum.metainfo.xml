@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.sigillum</id>
+  <name>Sigillum</name>
+  <summary>Sign, timestamp and verify digital documents</summary>
+  <summary xml:lang="it">Firma, marca temporale e verifica documenti digitali</summary>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <description>
+    <p>
+      Sigillum is a desktop application for digital signature and time-stamping
+      of documents according to ETSI / eIDAS standards. It supports the PAdES
+      (PDF), CAdES (.p7m) and XAdES (XML) formats, both at level B (basic) and
+      level T (with timestamp), and can apply or verify standalone RFC 3161
+      time stamps (.tsr / .tsd).
+    </p>
+    <p xml:lang="it">
+      Sigillum è un'applicazione desktop per la firma digitale e la marca
+      temporale di documenti conformi agli standard ETSI / eIDAS. Supporta i
+      formati PAdES (PDF), CAdES (.p7m) e XAdES (XML), sia a livello B che T
+      (con marca temporale), e produce/verifica marche temporali RFC 3161
+      standalone (.tsr / .tsd).
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Sign with a PKCS#12 file or a PKCS#11 hardware token
+        (YubiKey, Bit4id Digital-DNA Key, smartcards via OpenSC)</li>
+      <li>Auto-detection of PKCS#11 drivers and tokens</li>
+      <li>RFC 3161 time-stamping, including HTTP Basic Auth for qualified
+        Italian TSAs (Aruba PEC, InfoCert, Namirial)</li>
+      <li>Standalone file time-stamping in TSR and TSD format</li>
+      <li>Visible PAdES signature with optional logo and graphical box
+        positioning on a PDF preview</li>
+      <li>Trust chain validation against the Italian AgID Trust List, with
+        background auto-refresh</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">io.github.sigillum.desktop</launchable>
+
+  <url type="homepage">https://github.com/piuma/sigillum</url>
+  <url type="bugtracker">https://github.com/piuma/sigillum/issues</url>
+  <url type="vcs-browser">https://github.com/piuma/sigillum</url>
+
+  <developer id="io.github.piuma">
+    <name>Danilo Abbasciano</name>
+  </developer>
+
+  <categories>
+    <category>Office</category>
+    <category>Security</category>
+  </categories>
+
+  <content_rating type="oars-1.1" />
+
+  <provides>
+    <binary>sigillum</binary>
+  </provides>
+
+  <releases>
+    <release version="0.1.0" date="2026-05-19">
+      <description>
+        <p>Initial release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

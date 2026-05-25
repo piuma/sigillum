@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 128 128"
+   width="128"
+   height="128"
+   version="1.1"
+   id="svg6"
+   sodipodi:docname="io.github.sigillum.svg"
+   inkscape:version="1.4.3 (0d15f75042, 2025-12-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview6"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="3.9885242"
+     inkscape:cx="-13.288123"
+     inkscape:cy="80.230176"
+     inkscape:window-width="1920"
+     inkscape:window-height="975"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg6" />
+  <!-- Stylised wax-seal icon: a circular medallion with a ribbon and an 'S'.
+       Placeholder until a designed asset is available. -->
+  <path
+     sodipodi:type="star"
+     style="fill:#800000;stroke-width:5;stroke-linecap:round"
+     id="path1"
+     inkscape:flatsided="false"
+     sodipodi:sides="8"
+     sodipodi:cx="60.674072"
+     sodipodi:cy="60.924789"
+     sodipodi:r1="69.073509"
+     sodipodi:r2="60.093952"
+     sodipodi:arg1="-2.6179939"
+     sodipodi:arg2="-2.2252948"
+     inkscape:rounded="0.5"
+     inkscape:randomized="0"
+     d="M 0.8546578,26.388036 C 7.5281568,14.829197 13.502307,21.37419 24.091192,13.249052 34.680076,5.1239147 29.904322,-2.3406396 42.796531,-5.7950966 c 12.89221,-3.4544574 12.488563,5.39791338 25.721376,7.1400459 13.232811,1.7421324 15.13408,-6.9130728 26.692919,-0.2395743 11.558834,6.6734989 5.013844,12.647649 13.138984,23.236534 8.12514,10.588884 15.58969,5.81313 19.04415,18.705339 3.45446,12.89221 -5.39792,12.488563 -7.14005,25.721376 -1.74213,13.232812 6.91308,15.13408 0.23958,26.692919 -6.6735,11.558837 -12.64765,5.013847 -23.236537,13.138987 -10.588885,8.12513 -5.813131,15.58969 -18.70534,19.04415 -12.89221,3.45445 -12.488563,-5.39792 -25.721375,-7.14005 C 39.597426,118.7625 37.696157,127.4177 26.137319,120.7442 14.57848,114.0707 21.123473,108.09656 12.998335,97.50767 4.8731976,86.918785 -2.5913568,91.69454 -6.0458138,78.802331 -9.5002711,65.910121 -0.64790039,66.313768 1.0942321,53.080955 2.8363645,39.848143 -5.8188406,37.946875 0.8546578,26.388036 Z"
+     inkscape:transform-center-x="-2.8380122"
+     inkscape:transform-center-y="-1.4187187"
+     transform="matrix(0.86816446,0,0,0.86816446,11.324927,11.107263)" />
+  <defs
+     id="defs4">
+    <radialGradient
+       id="seal"
+       cx="50%"
+       cy="40%"
+       r="60%">
+      <stop
+         offset="0%"
+         stop-color="#d65a3a"
+         id="stop1" />
+      <stop
+         offset="100%"
+         stop-color="#7a1f10"
+         id="stop2" />
+    </radialGradient>
+    <linearGradient
+       id="ribbon"
+       x1="0"
+       y1="0"
+       x2="0"
+       y2="1">
+      <stop
+         offset="0%"
+         stop-color="#f7d674"
+         id="stop3" />
+      <stop
+         offset="100%"
+         stop-color="#b58a26"
+         id="stop4" />
+    </linearGradient>
+  </defs>
+  <!-- Ribbon tails behind the seal -->
+  <!-- The seal body -->
+  <circle
+     cx="64"
+     cy="60"
+     r="44"
+     fill="url(#seal)"
+     stroke="#3a0d04"
+     stroke-width="3"
+     id="circle5"
+     style="stroke:#511207;stroke-opacity:1" />
+  <!-- Decorative inner ring -->
+  <circle
+     cx="63.991074"
+     cy="60"
+     r="36"
+     fill="none"
+     stroke="#f1c97a"
+     stroke-width="1.5"
+     stroke-dasharray="2, 3"
+     id="circle6"
+     style="stroke:#c3801a;stroke-opacity:1" />
+  <!-- Stylised 'S' (Sigillum) -->
+  <path
+     id="path6"
+     style="fill:none;stroke:#9c9c9c;stroke-width:5.58206;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
+     d="m 64.1802,33.283997 c -7.415141,-5.8e-5 -13.458384,5.949988 -13.573562,13.364234 -4.842298,41.378654 29.434274,49.403404 27.147123,0 C 77.638586,39.233985 71.595341,33.283939 64.1802,33.283997 Z"
+     sodipodi:nodetypes="cccc" />
+  <rect
+     style="fill:#ffd42a;stroke-width:2.53049;stroke-linecap:round"
+     id="rect6"
+     width="41.238758"
+     height="32.039341"
+     x="43.380623"
+     y="53.467693"
+     rx="5.1173239"
+     ry="5.1173239" />
+  <circle
+     style="fill:#9c9c9c;fill-opacity:1;stroke:none;stroke-width:3.75284;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
+     id="path7"
+     cx="64"
+     cy="67.879417"
+     r="5.5513706" />
+  <circle
+     style="fill:#9c9c9c;fill-opacity:1;stroke:none;stroke-width:2.14448;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
+     id="path7-6"
+     cx="64"
+     cy="74.160385"
+     r="3.1722119" />
+</svg>

@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+export PYBUILD_NAME=endesive
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+<<<<<<< HEAD
+
+# Skip the upstream test suite: it requires real PKCS#11 drivers, network
+# access and large signed-PDF fixtures that aren't available in a clean
+# build chroot. Worse, on Debian PyKCS11 1.5.x can segfault at module load
+# when no driver is loadable, taking pytest with it during collection.
+override_dh_auto_test:
+	:
+=======
+>>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)

@@ -1,0 +1,19 @@
+<<<<<<< HEAD
+python-endesive (2.19.3-1) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #XXXXXX)
+    - Substitute #XXXXXX with the ITP bug number once filed.
+    - Matches the Fedora python-endesive.spec version; sigillum's
+      pyproject.toml requires endesive >= 2.17.
+
+ -- Danilo Abbasciano <danilo@piumalab.org>  Fri, 22 May 2026 14:00:00 +0200
+=======
+python-endesive (2.17.0-1) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #XXXXXX)
+    - Substitute #XXXXXX with the ITP bug number once filed.
+    - Verify the upstream version against pyproject.toml's
+      `endesive>=2.17.0` constraint of the sigillum package.
+
+ -- Danilo Abbasciano <danilo.abbasciano@par-tec.it>  Thu, 21 May 2026 17:00:00 +0200
+>>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)

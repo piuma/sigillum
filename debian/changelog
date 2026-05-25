@@ -1,0 +1,9 @@
+sigillum (0.1.0-1) unstable; urgency=medium
+
+  * Initial release. (Closes: #XXXXXX)
+
+<<<<<<< HEAD
+ -- Danilo Abbasciano <danilo@piumalab.org>  Thu, 21 May 2026 17:00:00 +0200
+=======
+ -- Danilo Abbasciano <danilo.abbasciano@par-tec.it>  Thu, 21 May 2026 17:00:00 +0200
+>>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)

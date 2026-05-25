@@ -1,0 +1,221 @@
+.\" SPDX-License-Identifier: GPL-3.0-or-later
+.\" Copyright (C) 2026 Danilo Abbasciano <danilo@piumalab.org>
+.TH SIGILLUM 1 "2026-05-22" "sigillum 0.1.0" "User Commands"
+.SH NAME
+sigillum \- digital signature, timestamping and encryption of documents (PAdES/CAdES/XAdES)
+.SH SYNOPSIS
+.B sigillum
+[\fIOPTIONS\fR]
+.RI [ COMMAND ]
+.RI [ ARGS ...]
+.SH DESCRIPTION
+.B sigillum
+is a GTK desktop application for digital signature, timestamping and
+encryption of documents according to the ETSI/eIDAS standards. It supports
+the
+.B PAdES
+(signed PDF),
+.B CAdES
+(.p7m enveloping),
+.B XAdES
+(XML enveloped) formats, and standalone
+.B TSR
+(RFC 3161) and
+.B TSD
+(ETSI TS 119 422) timestamps.
+.PP
+Without arguments,
+.B sigillum
+starts the graphical interface. With a subcommand it performs the requested
+operation and exits, making it usable from scripts.
+.SH COMMANDS
+.TP
+.B sign \fIFILE\fR [\fI\-\-level B|T|LT\fR] [\fI\-o OUTPUT\fR]
+Sign the file. The format is derived from the extension
+(\&.pdf → PAdES, \&.xml → XAdES, anything else → CAdES).
+.TP
+.B verify \fIFILE\fR [\fI\-\-original FILE\fR] [\fI\-\-trusted CA.pem\fR] [\fI\-\-json\fR]
+Verify a signature or a timestamp. For .tsr files
+.IR \-\-original
+is required.
+.TP
+.B timestamp \fIFILE\fR [\fI\-\-format tsr|tsd\fR]
+Timestamp a file via RFC 3161.
+.TP
+.B encrypt \fIFILE\fR [\fI\-\-mode sym|asym\fR] [\fI\-\-algo NAME\fR] [\fI\-\-recipient CERT\fR]
+Encrypt the file. Either symmetric mode (AES-256 default) or asymmetric
+(CMS EnvelopedData against a certificate).
+.TP
+.B decrypt \fIFILE\fR
+Decrypt the file. The format (SIGILLUM or CMS) is auto-detected.
+.TP
+.B tsl-import
+Download the AgID Trust List into local PEM bundles.
+.TP
+.B detect
+List the available PKCS#11 drivers, the detected USB tokens and the
+certificates on each token.
+.TP
+.B config show \fR|\fB config set \fR[\fIoptions\fR]
+Show or modify the persistent configuration (signing device, TSA,
+visible signature).
+.TP
+.B gui
+Launch the graphical interface.
+.SH COMMON OPTIONS
+.TP
+.B \-h, \-\-help
+Print the help message.
+.TP
+.B \-V, \-\-version
+Print the version.
+.SH SIGN OPTIONS
+.TP
+.BI \-\-level " { B | T | LT }"
+Signature level. B = basic, T = with timestamp, LT = long-term (with
+embedded chain and revocation data). Default: B.
+.TP
+.BI \-\-cert " FILE"
+Use the given PKCS#12 (.p12/.pfx) or PEM file.
+.TP
+.BI \-\-lib " PATH " \-\-cert\-id " ID"
+Use the given PKCS#11 token. See
+.BR "sigillum detect"
+for the value of
+.IR ID .
+.TP
+.BI \-\-tsa " URL"
+URL of the Time-Stamp Authority.
+.TP
+.B \-\-visible
+PAdES: draw a visible signature on the PDF (optional logo via
+.IR \-\-image ,
+position via
+.IR \-\-position
+or
+.IR \-\-box ).
+.SH ENVIRONMENT
+.TP
+.B SIGILLUM_PIN
+PIN of the PKCS#11 token. If unset,
+.B sigillum
+asks for it on the terminal.
+.TP
+.B SIGILLUM_PASSWORD
+Password of the PKCS#12 file or of the symmetric encryption.
+.TP
+.B SIGILLUM_TSA_PASSWORD
+HTTP Basic password for the TSA.
+.TP
+.B XDG_CONFIG_HOME
+Override the configuration directory (default:
+.IR ~/.config ).
+The configuration lives in
+.I ~/.config/sigillum/settings.json
+with permissions 0600.
+.TP
+.B XDG_DATA_HOME
+Override the data directory (default:
+.IR ~/.local/share ).
+The PEM bundles for the AgID Trust List are in
+.IR ~/.local/share/sigillum/trusted/ .
+.SH EXAMPLES
+Sign a PDF at level T against FreeTSA:
+.PP
+.nf
+.RS
+SIGILLUM_PASSWORD=secret sigillum sign document.pdf \\
+    \-\-cert mine.p12 \-\-level T \\
+    \-\-tsa https://freetsa.org/tsr
+.RE
+.fi
+.PP
+Sign a PDF with a YubiKey, applying a visible signature on the
+bottom-right corner:
+.PP
+.nf
+.RS
+SIGILLUM_PIN=123456 sigillum sign report.pdf \\
+    \-\-lib /usr/lib/x86_64\-linux\-gnu/libykcs11.so.2 \\
+    \-\-cert\-id 02:9c67ef95f0e64305 \\
+    \-\-visible \-\-position bottom-right \-\-image logo.png
+.RE
+.fi
+.PP
+Verify a signed file with JSON output:
+.PP
+.nf
+.RS
+sigillum verify document.signed.pdf \-\-json
+.RE
+.fi
+.PP
+Encrypt symmetrically with AES\-256:
+.PP
+.nf
+.RS
+SIGILLUM_PASSWORD=pwd sigillum encrypt secret.txt
+.RE
+.fi
+.SH EXIT STATUS
+.TP
+.B 0
+success.
+.TP
+.B 1
+user error (wrong argument, missing file, missing configuration).
+.TP
+.B 2
+external-service error (TSA unreachable, network error, signing failed).
+.TP
+.B 3
+signature verification did not succeed (invalid signature or untrusted chain).
+.TP
+.B 130
+interrupted by SIGINT.
+.SH FILES
+.TP
+.I ~/.config/sigillum/settings.json
+Persistent configuration (signing device, TSA, visible signature).
+Permissions 0600 because it may contain the HTTP Basic password of the TSA.
+.TP
+.I ~/.local/share/sigillum/trusted/it\-eidas\-signing.pem
+Bundle of the Italian qualified signer CAs (AgID TSL).
+.TP
+.I ~/.local/share/sigillum/trusted/it\-eidas\-tsa.pem
+Bundle of the Italian qualified TSA CAs.
+.SH STANDARDS
+.TP
+.B ETSI EN 319 142
+PAdES (PDF Advanced Electronic Signatures).
+.TP
+.B ETSI EN 319 122
+CAdES (CMS Advanced Electronic Signatures).
+.TP
+.B ETSI EN 319 132
+XAdES (XML Advanced Electronic Signatures).
+.TP
+.B ETSI TS 119 612
+Trusted Lists.
+.TP
+.B ETSI TS 119 422
+TimeStampedData (TSD).
+.TP
+.B RFC 3161
+Time-Stamp Protocol (TSR).
+.TP
+.B RFC 5652
+Cryptographic Message Syntax (CMS).
+.TP
+.B PKCS#11
+Cryptographic Token Interface (RSA Labs).
+.SH BUGS
+Report bugs at:
+.UR https://github.com/piuma/sigillum/issues
+.UE .
+.SH AUTHOR
+Danilo Abbasciano <danilo@piumalab.org>.
+.SH SEE ALSO
+.BR openssl (1),
+.BR pkcs11\-tool (1),
+.BR yubico\-piv\-tool (1).

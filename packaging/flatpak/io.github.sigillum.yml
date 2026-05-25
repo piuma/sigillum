@@ -1,0 +1,163 @@
+# Flatpak manifest for Sigillum.
+#
+# Build locally:
+#   scripts/build_flatpak.sh
+#
+# Sandbox notes:
+# - `--socket=pcsc` exposes the host pcscd daemon: the bundled OpenSC + the
+#   bundled pcsc-lite *client* library talk to the host's pcscd via that
+#   socket, so smartcards (CNS, CIE) work transparently.
+# - `--device=all` covers USB-attached tokens (YubiKey, Bit4id Digital-DNA
+#   Key) that talk directly via libusb rather than via pcscd. This is the
+#   same permission Firefox / KeePassXC require for token access.
+# - `--filesystem=home` exposes the user-installed vendor PKCS#11 drivers
+#   (e.g. ~/infocamere/.../libbit4xpki.so, ~/aruba/.../libbit4xpki.so).
+#   These are closed-source vendor blobs that we cannot bundle inside the
+#   Flatpak — but they `dlopen()` cleanly from inside the sandbox because
+#   their only dependencies are libc/libm/libdl/libpthread, all present in
+#   the GNOME runtime.
+# - `--share=network` is required for TSA RFC 3161 calls and TSL imports.
+#
+# Bundled PKCS#11 drivers under /app/lib/...:
+#   - libpcsclite.so.1            (client only; pcscd stays on host)
+#   - opensc-pkcs11.so            (generic smartcards, CNS, CIE)
+#   - libykcs11.so.2              (YubiKey PIV via libusb)
+#
+# Python dependencies are produced in a separate manifest fragment by
+# `flatpak-pip-generator` so they ship as deterministic source tarballs.
+# Regenerate them via `scripts/build_flatpak.sh --regen-deps`.
+
+app-id: io.github.sigillum
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+command: sigillum
+
+finish-args:
+  # Display
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # Network for TSA + TSL + AgID downloads
+  - --share=network
+  # Smartcards & USB security tokens
+  - --socket=pcsc
+  - --device=all
+  # User documents + vendor PKCS#11 drivers under $HOME
+  - --filesystem=home
+  # Sigillum reads/writes its own config and trust bundles
+  - --filesystem=xdg-config/sigillum:create
+  - --filesystem=xdg-data/sigillum:create
+
+cleanup:
+  - /share/man
+  - /share/doc
+  - '*.la'
+  - '*.a'
+  - /lib/python3.*/site-packages/*/tests
+  - /lib/python3.*/site-packages/*/__pycache__
+
+modules:
+  # --- libusb 1.0: required by both pcsc-lite (CCID driver) and ykcs11 ---
+  - name: libusb
+    buildsystem: autotools
+    config-opts:
+      - --disable-static
+      - --disable-udev
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+    sources:
+      - type: archive
+        url: https://github.com/libusb/libusb/releases/download/v1.0.27/libusb-1.0.27.tar.bz2
+        sha256: ffaa41d741a8a3bee244ac8e54a72ea05bf2879663c098c82fc5757853441575
+
+  # --- pcsc-lite: client library only. The daemon lives on the host and we
+  #     talk to it via --socket=pcsc. We disable polkit/systemd integration
+  #     and remove the daemon binary in cleanup since it's never run. ---
+  - name: pcsc-lite
+    buildsystem: autotools
+    config-opts:
+      - --disable-libsystemd
+      - --disable-polkit
+      - --disable-libudev
+      - --disable-static
+    cleanup:
+      - /bin/pcsc-spy
+      - /sbin/pcscd
+      - /etc/reader.conf.d
+      - /include
+      - /lib/pkgconfig
+      - /share/doc
+    sources:
+      - type: archive
+        url: https://pcsclite.apdu.fr/files/pcsc-lite-2.3.3.tar.xz
+        sha256: cdff7d7153a0b37aa74e26dfec89ec7dc5c5286aa21b91b903e38739d227e8e7
+
+  # --- OpenSC: provides /app/lib/pkcs11/opensc-pkcs11.so. Smartcard
+  #     drivers talk to the host's pcscd through libpcsclite. ---
+  - name: opensc
+    buildsystem: autotools
+    config-opts:
+      - --disable-static
+      - --disable-doc
+      - --disable-strict
+      - --sysconfdir=/app/etc
+    cleanup:
+      - /bin
+      - /sbin
+      - /include
+      - /lib/pkgconfig
+      - /share/doc
+      - /share/applications
+      - /share/icons
+    sources:
+      - type: archive
+        url: https://github.com/OpenSC/OpenSC/releases/download/0.27.1/opensc-0.27.1.tar.gz
+        sha256: 976f4a23eaf3397a1a2c3a7aac80bf971a8c3d829c9a79f06145bfaeeae5eca7
+
+  # --- yubico-piv-tool: builds libykcs11 (PIV PKCS#11 driver for YubiKey).
+  #     Talks USB directly via libusb (not via pcscd). We strip the CLI tools
+  #     in cleanup since Sigillum only needs the .so. ---
+  - name: yubico-piv-tool
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DENABLE_HARDWARE_TESTS=OFF
+      - -DENABLE_CERT_COMPRESS=OFF
+      - -DGENERATE_MAN_PAGES=OFF
+    cleanup:
+      - /bin
+      - /include
+      - /lib/pkgconfig
+      - /share/applications
+      - /share/icons
+    sources:
+      - type: archive
+        url: https://developers.yubico.com/yubico-piv-tool/Releases/yubico-piv-tool-2.7.2.tar.gz
+        sha256: b84ade3c35d4949db008e6cda7b6cc70ff98858598b3f09bc46fd24a3d5f7461
+
+  # --- Python dependencies of Sigillum (excluding PyGObject, which is in
+  #     the GNOME runtime). Generated by `flatpak-pip-generator` — see the
+  #     build script. ---
+  - python3-deps.yaml
+
+  # --- Sigillum itself ---
+  - name: sigillum
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index
+        --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST}
+        --no-build-isolation
+        .
+      - install -Dm644 packaging/flatpak/io.github.sigillum.desktop
+        ${FLATPAK_DEST}/share/applications/io.github.sigillum.desktop
+      - install -Dm644 packaging/flatpak/io.github.sigillum.metainfo.xml
+        ${FLATPAK_DEST}/share/metainfo/io.github.sigillum.metainfo.xml
+      - install -Dm644 packaging/flatpak/io.github.sigillum.svg
+        ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/io.github.sigillum.svg
+    sources:
+      - type: dir
+        path: ../..

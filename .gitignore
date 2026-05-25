@@ -1,0 +1,36 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.claude/
+dist/
+*.p12
+*.pfx
+*.pem
+*.key
+*.p7m
+*-signed.pdf
+
+# dpkg-buildpackage / debhelper artifacts
+.pybuild/
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/sigillum/
+debian/sigillum.debhelper.log
+debian/sigillum.postinst.debhelper
+debian/sigillum.prerm.debhelper
+debian/sigillum.substvars
+
+# po4a + gettext compiled artifacts (regenerated at build time)
+po/build/
+docs/build/
+
+# flatpak-pip-generator downloaded on demand by scripts/build_flatpak.sh
+scripts/.flatpak-pip-generator

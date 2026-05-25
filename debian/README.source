@@ -1,0 +1,36 @@
+sigillum for Debian
+===================
+
+Build the package from a Debian/Ubuntu machine:
+
+    sudo apt install build-essential debhelper dh-python pybuild-plugin-pyproject \
+                     python3-all python3-hatchling devscripts lintian
+    sudo apt install python3-cryptography python3-asn1crypto python3-lxml \
+                     python3-pykcs11 python3-requests python3-pytest
+    # python3-endesive is NOT yet in Debian. See the separate sigillum-endesive
+    # packaging effort. Until it lands, build with `--no-check` or against a
+    # locally-built python3-endesive.
+
+    # From the project root:
+    dpkg-buildpackage -us -uc -b
+    lintian ../sigillum_0.1.0-1_all.deb
+
+The orig tarball can be regenerated from a clean checkout via:
+
+    git archive --format=tar.gz --prefix=sigillum-0.1.0/ HEAD \
+        -o ../sigillum_0.1.0.orig.tar.gz
+
+Notes
+-----
+
+* Tests are run during build (`pybuild --test pytest`). Network and
+  hardware-bound tests are excluded via the markers registered in
+  pyproject.toml. To skip tests entirely set `DEB_BUILD_OPTIONS=nocheck`.
+
+* No vendor-proprietary code is bundled. The Bit4id PKCS#11 driver
+  (libbit4xpki.so), if installed by the user from the vendor under
+  ~/infocamere/ or similar, is auto-detected at runtime but not a Depends.
+
+* The flatpak manifest under packaging/flatpak/ is for Flathub builds and
+  is irrelevant to the Debian package; the .desktop, AppStream metainfo
+  and SVG icon are reused from there via debian/sigillum.install.

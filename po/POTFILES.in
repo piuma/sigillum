@@ -1,0 +1,13 @@
+src/sigillum/cli.py
+src/sigillum/core/credentials.py
+src/sigillum/core/crypto.py
+src/sigillum/core/detection.py
+src/sigillum/core/lt.py
+src/sigillum/core/pades_lt.py
+src/sigillum/core/settings.py
+src/sigillum/core/signer.py
+src/sigillum/core/timestamp.py
+src/sigillum/core/verifier.py
+src/sigillum/core/xades_lt.py
+src/sigillum/gui/app.py
+src/sigillum/gui/signature_picker.py

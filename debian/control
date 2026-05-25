@@ -1,0 +1,67 @@
+Source: sigillum
+Section: utils
+Priority: optional
+<<<<<<< HEAD
+Maintainer: Danilo Abbasciano <danilo@piumalab.org>
+=======
+Maintainer: Danilo Abbasciano <danilo.abbasciano@par-tec.it>
+>>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-python,
+ pybuild-plugin-pyproject,
+ python3-all (>= 3.11),
+ python3-hatchling,
+<<<<<<< HEAD
+ gettext,
+ po4a,
+=======
+>>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
+ python3-pytest <!nocheck>,
+ python3-cryptography <!nocheck>,
+ python3-asn1crypto <!nocheck>,
+ python3-lxml <!nocheck>,
+ python3-endesive <!nocheck>,
+ python3-pykcs11 <!nocheck>,
+ python3-requests <!nocheck>,
+Standards-Version: 4.7.0
+Homepage: https://github.com/piuma/sigillum
+Vcs-Browser: https://github.com/piuma/sigillum
+Vcs-Git: https://github.com/piuma/sigillum.git
+Rules-Requires-Root: no
+
+Package: sigillum
+Architecture: all
+Depends:
+ ${python3:Depends},
+ ${misc:Depends},
+ python3-gi,
+ gir1.2-gtk-3.0,
+ gir1.2-poppler-0.18,
+ python3-cryptography,
+ python3-asn1crypto,
+ python3-lxml,
+ python3-endesive,
+ python3-pykcs11,
+ python3-requests,
+Recommends:
+ opensc-pkcs11,
+ yubico-piv-tool,
+Description: Italian eIDAS digital signature tool (PAdES/CAdES/XAdES)
+ Sigillum is a GTK desktop application for digital signature, time-stamping
+ and encryption of documents according to ETSI/eIDAS standards.
+ .
+ Supports:
+  * PAdES (signed PDF), CAdES (.p7m enveloping), XAdES (signed XML)
+  * Levels B (basic), T (with TSA timestamp) and LT (long-term: chain
+    and revocation data embedded for offline verification)
+  * Standalone RFC 3161 time stamps (.tsr) and ETSI TS 119 422
+    TimeStampedData (.tsd)
+  * File encryption: symmetric (AES-256/AES-128/3DES/Blowfish) with
+    password and asymmetric (CMS EnvelopedData) with recipient certificate
+  * PKCS#12 file credentials and PKCS#11 hardware tokens
+    (YubiKey, smartcards via OpenSC, Bit4id Digital-DNA Key with the
+    vendor driver if installed on the system)
+  * Italian eIDAS Trusted List (AgID TSL) for qualified signers and TSAs
+ .
+ Includes both a GTK GUI and a feature-complete CLI for batch workflows.

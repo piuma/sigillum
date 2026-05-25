@@ -1,0 +1,3 @@
+packaging/flatpak/io.github.sigillum.desktop      usr/share/applications
+packaging/flatpak/io.github.sigillum.metainfo.xml usr/share/metainfo
+packaging/flatpak/io.github.sigillum.svg          usr/share/icons/hicolor/scalable/apps

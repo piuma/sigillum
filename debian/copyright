@@ -1,0 +1,62 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: sigillum
+<<<<<<< HEAD
+Upstream-Contact: Danilo Abbasciano <danilo@piumalab.org>
+Source: https://github.com/piuma/sigillum
+
+Files: *
+Copyright: 2026 Danilo Abbasciano <danilo@piumalab.org>
+License: GPL-3.0-or-later
+
+Files: debian/*
+Copyright: 2026 Danilo Abbasciano <danilo@piumalab.org>
+License: GPL-3.0-or-later
+
+Files: packaging/flatpak/io.github.sigillum.metainfo.xml
+Copyright: 2026 Danilo Abbasciano <danilo@piumalab.org>
+=======
+Upstream-Contact: Danilo Abbasciano <danilo.abbasciano@par-tec.it>
+Source: https://github.com/piuma/sigillum
+
+Files: *
+Copyright: 2026 Danilo Abbasciano <danilo.abbasciano@par-tec.it>
+License: GPL-3.0-or-later
+
+Files: debian/*
+Copyright: 2026 Danilo Abbasciano <danilo.abbasciano@par-tec.it>
+License: GPL-3.0-or-later
+
+Files: packaging/flatpak/io.github.sigillum.metainfo.xml
+Copyright: 2026 Danilo Abbasciano <danilo.abbasciano@par-tec.it>
+>>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
+License: CC0-1.0
+Comment:
+ AppStream metadata is released under CC0-1.0 per the Freedesktop
+ metainfo guidelines (so it can be aggregated into appstream catalogs
+ without licensing conflicts).
+
+License: GPL-3.0-or-later
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 3 can be found in "/usr/share/common-licenses/GPL-3".
+
+License: CC0-1.0
+ To the extent possible under law, the author(s) have dedicated all
+ copyright and related and neighboring rights to this software to the
+ public domain worldwide. This software is distributed without any
+ warranty.
+ .
+ On Debian systems, the complete text of the Creative Commons Zero v1.0
+ Universal license can be found in "/usr/share/common-licenses/CC0-1.0".

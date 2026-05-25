@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=Sigillum
+GenericName=Digital Signature
+GenericName[it]=Firma digitale
+Comment=Sign, timestamp and verify PAdES/CAdES/XAdES documents
+Comment[it]=Firma, marca temporale e verifica documenti PAdES/CAdES/XAdES
+Exec=sigillum
+Icon=io.github.sigillum
+Terminal=false
+Categories=Office;Security;
+Keywords=signature;sign;PAdES;CAdES;XAdES;timestamp;TSA;PKCS11;eIDAS;
+Keywords[it]=firma;digitale;marca;temporale;PEC;eIDAS;CNS;
+StartupNotify=true
+StartupWMClass=Sigillum

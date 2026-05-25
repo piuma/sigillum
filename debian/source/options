@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Exclude development noise and packaging artifacts from the orig tarball
+# when building with `dpkg-source -b` from a git checkout.
+tar-ignore = ".git"
+tar-ignore = ".github"
+tar-ignore = ".venv"
+tar-ignore = ".pytest_cache"
+tar-ignore = ".ruff_cache"
+tar-ignore = "dist"
+tar-ignore = "build"
+tar-ignore = "__pycache__"
+tar-ignore = "*.egg-info"
