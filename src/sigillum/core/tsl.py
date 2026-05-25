@@ -70,6 +70,7 @@ class TSLImportResult:
     when: datetime
     signing_path: Path
     tsa_path: Path
+    country: str = "IT"
     signer_cert: x509.Certificate | None = field(default=None, repr=False)
     signer_trusted: bool = False  # True when LOTL-anchored check passed
 
@@ -156,13 +157,11 @@ def verify_tsl_signature(
     si_exclusive = _EXC_C14N_URI in c14n_alg
 
     # --- verify each Reference ---
+    transforms_xpath = f"{{{_DS}}}Transforms/{{{_DS}}}Transform"
     for ref in signed_info.findall(f"{{{_DS}}}Reference"):
         uri = ref.get("URI", "")
         transforms = [
-            t.get("Algorithm", "")
-            for t in ref.findall(f"{{{_DS}}}Transforms/{{{DS}}}Transform".replace(
-                "{DS}", f"{{{_DS}}}"
-            ))
+            t.get("Algorithm", "") for t in ref.findall(transforms_xpath)
         ]
 
         if uri == "":
@@ -222,6 +221,14 @@ def verify_tsl_signature(
     try:
         if "ecdsa" in sig_alg_l or ("ec" in sig_alg_l and "rsa" not in sig_alg_l):
             pubkey.verify(raw_sig, si_c14n, ec.ECDSA(h_alg))
+        elif "mgf" in sig_alg_l or "pss" in sig_alg_l:
+            # RSA-PSS — used by several EU TSLs (e.g. DE: sha256-rsa-MGF1).
+            # ETSI/XAdES practice is salt_length == digest_size.
+            pubkey.verify(
+                raw_sig, si_c14n,
+                padding.PSS(mgf=padding.MGF1(h_alg), salt_length=h_alg.digest_size),
+                h_alg,
+            )
         else:
             pubkey.verify(raw_sig, si_c14n, padding.PKCS1v15(), h_alg)
     except InvalidSignature as exc:
@@ -386,12 +393,34 @@ def trusted_dir() -> Path:
     return base / "sigillum" / "trusted"
 
 
-def signing_pem_path() -> Path:
-    return trusted_dir() / "it-eidas-signing.pem"
+def signing_pem_path(country: str = "IT") -> Path:
+    """Per-country PEM bundle for qualified-signature CAs.
+
+    The legacy Italian path (``it-eidas-signing.pem``) is preserved when
+    ``country="IT"`` so existing installs keep working without migration.
+    """
+    return trusted_dir() / f"{country.lower()}-eidas-signing.pem"
 
 
-def tsa_pem_path() -> Path:
-    return trusted_dir() / "it-eidas-tsa.pem"
+def tsa_pem_path(country: str = "IT") -> Path:
+    """Per-country PEM bundle for qualified TSA CAs."""
+    return trusted_dir() / f"{country.lower()}-eidas-tsa.pem"
+
+
+def list_imported_countries() -> list[str]:
+    """Return the uppercase ISO codes of every country with a signing bundle on disk.
+
+    Used by Settings / UI to enumerate the currently-imported national TSLs.
+    """
+    d = trusted_dir()
+    if not d.is_dir():
+        return []
+    out: list[str] = []
+    for f in d.glob("*-eidas-signing.pem"):
+        cc = f.name.split("-", 1)[0]
+        if cc and cc.isalpha():
+            out.append(cc.upper())
+    return sorted(out)
 
 
 def save_certs_as_pem(certs: list[x509.Certificate], path: Path) -> None:
@@ -403,42 +432,46 @@ def save_certs_as_pem(certs: list[x509.Certificate], path: Path) -> None:
     os.replace(tmp, path)
 
 
-def import_agid_tsl(
-    url: str = AGID_TSL_URL,
+def import_country_tsl(
+    country: str = "IT",
     *,
-    verify_signature: bool = True,
     lotl_url: str = EU_LOTL_URL,
+    verify_signature: bool = True,
 ) -> TSLImportResult:
-    """Full flow: fetch, verify XMLDSig, parse, save.
+    """Discover, verify and import the national TSL for *country* via the EU LOTL.
 
-    When *verify_signature=True* (the default) the enveloped XMLDSig on the
-    TSL is verified cryptographically. If the EU LOTL is reachable the signing
-    certificate is also cross-checked against it (LOTL-anchored trust). If the
-    LOTL fetch fails, only the mathematical signature check is performed and
-    *signer_trusted* is set to False in the result.
+    Flow:
+      1. Fetch the EU LOTL.
+      2. Locate the LOTL pointer for *country* — this yields both the TSL URL
+         and the certificates trusted to sign it.
+      3. Fetch the national TSL from the LOTL-published URL.
+      4. Verify the enveloped XMLDSig against the LOTL-published signing certs
+         (LOTL-anchored trust check).
+      5. Extract qualified-trust-service CAs and save them to per-country PEM
+         bundles.
 
-    Raises TSLSignatureError if *verify_signature=True* and the signature is
-    invalid, or if the signer is not in the LOTL when the LOTL is available.
+    Raises:
+        ValueError: if no XML pointer for *country* exists in the LOTL.
+        TSLSignatureError: if signature verification fails.
     """
-    xml_bytes = fetch_tsl(url)
+    lotl_bytes = fetch_tsl(lotl_url)
+    pointer = find_country_pointer(lotl_bytes, country)
+    if pointer is None:
+        raise ValueError(
+            f"No usable XML TSL pointer for country {country!r} in EU LOTL"
+        )
+
+    xml_bytes = fetch_tsl(pointer.tsl_url)
 
     signer_cert: x509.Certificate | None = None
     signer_trusted = False
-
     if verify_signature:
-        lotl_trusted: list[x509.Certificate] | None = None
-        if lotl_url:
-            try:
-                lotl_bytes = fetch_tsl(lotl_url)
-                lotl_trusted = fetch_it_tsl_signers_from_lotl(lotl_bytes)
-            except Exception:  # noqa: BLE001 — network/parse errors are non-fatal here
-                lotl_trusted = None
-
-        signer_cert = verify_tsl_signature(xml_bytes, trusted_certs=lotl_trusted)
-        signer_trusted = lotl_trusted is not None  # cert matched LOTL (or no LOTL → False)
+        signer_cert = verify_tsl_signature(xml_bytes, trusted_certs=pointer.signing_certs)
+        signer_trusted = True  # reaching this line means the LOTL-anchored check passed
 
     signing, tsa = parse_tsl(xml_bytes)
-    sp, tp = signing_pem_path(), tsa_pem_path()
+    sp = signing_pem_path(country)
+    tp = tsa_pem_path(country)
     save_certs_as_pem(signing, sp)
     save_certs_as_pem(tsa, tp)
     return TSLImportResult(
@@ -447,9 +480,26 @@ def import_agid_tsl(
         when=datetime.now(timezone.utc),
         signing_path=sp,
         tsa_path=tp,
+        country=country.upper(),
         signer_cert=signer_cert,
         signer_trusted=signer_trusted,
     )
+
+
+def import_agid_tsl(
+    url: str = AGID_TSL_URL,
+    *,
+    verify_signature: bool = True,
+    lotl_url: str = EU_LOTL_URL,
+) -> TSLImportResult:
+    """Italy-specific shortcut, kept for backward compatibility.
+
+    Delegates to :func:`import_country_tsl` with ``country="IT"``. The legacy
+    ``url`` parameter is accepted but ignored: the URL is now discovered from
+    the EU LOTL to guarantee the LOTL-anchored trust path.
+    """
+    del url  # legacy, superseded by LOTL discovery
+    return import_country_tsl("IT", lotl_url=lotl_url, verify_signature=verify_signature)
 
 
 def import_age_days(iso_timestamp: str) -> int | None:
