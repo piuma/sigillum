@@ -69,7 +69,6 @@ from sigillum.core.timestamp import (
     verify_tsr,
 )
 from sigillum.core.tsl import (
-    AGID_TSL_URL,
     import_age_days,
     signing_pem_path,
     tsa_pem_path,
@@ -79,6 +78,30 @@ from sigillum.core.verifier import CAdESVerifier, PAdESVerifier, Verifier, XAdES
 
 # After this many days the imported TSL is shown as stale.
 TSL_STALE_AFTER_DAYS = 30
+
+
+# Human-readable country names for the EU LOTL country codes. Used purely for
+# dropdown labels and tooltips — the codes themselves are what we persist.
+LOTL_COUNTRY_LABELS: dict[str, str] = {
+    "AT": "Austria",         "BE": "Belgium",        "BG": "Bulgaria",
+    "CY": "Cyprus",          "CZ": "Czech Republic", "DE": "Germany",
+    "DK": "Denmark",         "EE": "Estonia",        "EL": "Greece",
+    "ES": "Spain",           "FI": "Finland",        "FR": "France",
+    "HR": "Croatia",         "HU": "Hungary",        "IE": "Ireland",
+    "IS": "Iceland",         "IT": "Italy",          "LI": "Liechtenstein",
+    "LT": "Lithuania",       "LU": "Luxembourg",     "LV": "Latvia",
+    "MT": "Malta",           "NL": "Netherlands",    "NO": "Norway",
+    "PL": "Poland",          "PT": "Portugal",       "RO": "Romania",
+    "SE": "Sweden",          "SI": "Slovenia",       "SK": "Slovakia",
+    "UK": "United Kingdom",
+}
+
+
+def _country_label(cc: str) -> str:
+    """Format ``"IT — Italy"`` for dropdown / list display."""
+    cc = cc.upper()
+    name = LOTL_COUNTRY_LABELS.get(cc)
+    return f"{cc} — {name}" if name else cc
 
 
 DEFAULT_PKCS11_LIBS = [
@@ -323,21 +346,66 @@ class SettingsView(Gtk.Box):
         return page
 
     def _build_tsl_page(self) -> Gtk.Widget:
-        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        from sigillum.core.settings import LOTL_COUNTRIES
+
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         page.pack_start(
             Gtk.Label(
-                label=_("Download the Italian qualified CA certificates from {url}").format(url=AGID_TSL_URL),
+                label=_("Download national Trust Lists from the EU LOTL. "
+                        "The primary country is auto-imported at startup; "
+                        "additional countries can be enabled for verification."),
                 xalign=0, wrap=True,
             ),
             False, False, 0,
         )
-        tsl_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        self._tsl_import_button = Gtk.Button(label=_("Import from AgID TSL"))
-        self._tsl_import_button.connect("clicked", self._on_tsl_import_clicked)
-        tsl_row.pack_start(self._tsl_import_button, False, False, 0)
+
+        # --- Primary country dropdown ---
+        primary_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        primary_row.pack_start(
+            Gtk.Label(label=_("Primary country:"), xalign=0), False, False, 0,
+        )
+        self._tsl_primary_combo = Gtk.ComboBoxText()
+        self._tsl_primary_codes: list[str] = sorted(LOTL_COUNTRIES)
+        for cc in self._tsl_primary_codes:
+            self._tsl_primary_combo.append_text(_country_label(cc))
+        self._tsl_primary_combo.connect("changed", self._on_primary_country_changed)
+        primary_row.pack_start(self._tsl_primary_combo, False, False, 0)
+        page.pack_start(primary_row, False, False, 0)
+
+        # --- Status of the primary country (legacy label kept for set_tsl_busy) ---
         self._tsl_age_label = Gtk.Label(xalign=0)
-        tsl_row.pack_start(self._tsl_age_label, False, False, 6)
-        page.pack_start(tsl_row, False, False, 0)
+        page.pack_start(self._tsl_age_label, False, False, 0)
+
+        page.pack_start(Gtk.Separator(), False, False, 6)
+
+        # --- Imported TSLs list ---
+        page.pack_start(
+            Gtk.Label(label=_("Imported national TSLs:"), xalign=0),
+            False, False, 0,
+        )
+        self._tsl_list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        page.pack_start(self._tsl_list_box, False, False, 0)
+
+        # --- Buttons row: + Add country, refresh primary ---
+        action_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self._tsl_add_button = Gtk.Button(label=_("+ Add EU country"))
+        self._tsl_add_button.connect("clicked", self._on_add_country_clicked)
+        action_row.pack_start(self._tsl_add_button, False, False, 0)
+
+        # Backward-compat with set_tsl_busy: this is the "main" refresh button,
+        # bound to the primary country.
+        self._tsl_import_button = Gtk.Button(label=_("Refresh primary country"))
+        self._tsl_import_button.connect("clicked", self._on_tsl_import_clicked)
+        action_row.pack_start(self._tsl_import_button, False, False, 0)
+        page.pack_start(action_row, False, False, 0)
+
+        # Buttons that set_tsl_busy() should disable while a refresh is running.
+        # Per-row refresh buttons are added to this list as the rows are built.
+        self._tsl_busy_widgets: list[Gtk.Widget] = [
+            self._tsl_add_button,
+            self._tsl_import_button,
+            self._tsl_primary_combo,
+        ]
         return page
 
     def _build_about_page(self) -> Gtk.Widget:
@@ -867,8 +935,9 @@ class SettingsView(Gtk.Box):
         self._parent.start_tsl_refresh(silent=False)
 
     def set_tsl_busy(self, busy: bool):
-        """Called by the coordinator to disable the button + show progress."""
-        self._tsl_import_button.set_sensitive(not busy)
+        """Called by the coordinator to disable controls + show progress."""
+        for w in self._tsl_busy_widgets:
+            w.set_sensitive(not busy)
         if busy:
             self._tsl_age_label.set_markup(
                 _("<i>Refreshing national TSL…</i>")
@@ -876,6 +945,207 @@ class SettingsView(Gtk.Box):
         else:
             s = load_settings()
             self._refresh_tsl_age(s.last_import_for(s.effective_country()))
+            self._rebuild_tsl_country_list()
+
+    def _rebuild_tsl_country_list(self):
+        """Rebuild the per-country rows from disk + Settings.
+
+        One row per imported country, with a checkbox controlling
+        ``tsl_active_countries`` membership, an age label, and a refresh
+        button. The "+ Add" button below the list opens the chooser dialog.
+        """
+        from sigillum.core.tsl import list_imported_countries
+
+        # Clear existing rows.
+        for child in list(self._tsl_list_box.get_children()):
+            self._tsl_list_box.remove(child)
+        # Drop stale references from the busy list (per-row refresh buttons).
+        keep = {
+            id(self._tsl_add_button),
+            id(self._tsl_import_button),
+            id(self._tsl_primary_combo),
+        }
+        self._tsl_busy_widgets = [w for w in self._tsl_busy_widgets if id(w) in keep]
+
+        s = load_settings()
+        primary = s.effective_country()
+        active = set(s.active_countries())
+        countries = list_imported_countries()
+
+        if not countries:
+            self._tsl_list_box.pack_start(
+                Gtk.Label(label=_("(none yet — use the button below)"), xalign=0),
+                False, False, 0,
+            )
+            self._tsl_list_box.show_all()
+            self._sync_primary_combo(primary)
+            return
+
+        for cc in countries:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+
+            chk = Gtk.CheckButton()
+            chk.set_active(cc in active)
+            # Always-on for the primary country: removing it would silently
+            # break verification on the user's own TSL.
+            chk.set_sensitive(cc != primary)
+            chk.set_tooltip_text(
+                _("Use this country's certificates when verifying signatures.")
+            )
+            chk.connect("toggled", self._on_active_country_toggled, cc)
+            row.pack_start(chk, False, False, 0)
+
+            lbl = Gtk.Label(xalign=0)
+            ts = s.last_import_for(cc)
+            age = import_age_days(ts)
+            name = _country_label(cc)
+            if cc == primary:
+                name = f"<b>{name}</b>"
+            if age is None:
+                age_txt = _("never")
+                color = "#c33"
+            elif age <= TSL_STALE_AFTER_DAYS:
+                age_txt = _("imported {days}d ago").format(days=age)
+                color = "#2a7"
+            else:
+                age_txt = _("imported {days}d ago — stale").format(days=age)
+                color = "#c33"
+            lbl.set_markup(
+                f"{name}  <span foreground='{color}'><small>{age_txt}</small></span>"
+            )
+            row.pack_start(lbl, True, True, 0)
+
+            refresh = Gtk.Button.new_from_icon_name(
+                "view-refresh-symbolic", Gtk.IconSize.BUTTON,
+            )
+            refresh.set_tooltip_text(_("Re-download this country's TSL."))
+            refresh.connect("clicked", self._on_refresh_country_clicked, cc)
+            row.pack_start(refresh, False, False, 0)
+            self._tsl_busy_widgets.append(refresh)
+
+            remove = Gtk.Button.new_from_icon_name(
+                "edit-delete-symbolic", Gtk.IconSize.BUTTON,
+            )
+            remove.set_tooltip_text(_("Remove this country's TSL from disk."))
+            remove.set_sensitive(cc != primary)
+            remove.connect("clicked", self._on_remove_country_clicked, cc)
+            row.pack_start(remove, False, False, 0)
+            self._tsl_busy_widgets.append(remove)
+
+            self._tsl_list_box.pack_start(row, False, False, 0)
+
+        self._tsl_list_box.show_all()
+        self._sync_primary_combo(primary)
+
+    def _sync_primary_combo(self, primary: str):
+        """Position the dropdown on *primary* without re-firing 'changed'."""
+        try:
+            idx = self._tsl_primary_codes.index(primary.upper())
+        except ValueError:
+            idx = self._tsl_primary_codes.index("IT")
+        # Guard against the signal handler reacting to a programmatic update.
+        self._primary_combo_syncing = True
+        try:
+            self._tsl_primary_combo.set_active(idx)
+        finally:
+            self._primary_combo_syncing = False
+
+    def _on_primary_country_changed(self, combo: Gtk.ComboBoxText):
+        if getattr(self, "_primary_combo_syncing", False):
+            return
+        idx = combo.get_active()
+        if idx < 0 or idx >= len(self._tsl_primary_codes):
+            return
+        cc = self._tsl_primary_codes[idx]
+        s = load_settings()
+        if s.country == cc:
+            return
+        s.country = cc
+        # When the user picks a new primary, make sure it's enabled in the
+        # active set — otherwise their own country would silently drop out.
+        if s.tsl_active_countries and cc not in s.tsl_active_countries:
+            s.tsl_active_countries.append(cc)
+        save_settings(s)
+        self._rebuild_tsl_country_list()
+        # If the new primary hasn't been imported yet, trigger one now.
+        from sigillum.core.tsl import signing_pem_path
+        if not signing_pem_path(cc).exists():
+            self._parent.start_tsl_refresh(silent=False, country=cc)
+
+    def _on_active_country_toggled(self, chk: Gtk.CheckButton, cc: str):
+        s = load_settings()
+        active = list(s.tsl_active_countries) if s.tsl_active_countries else list(s.active_countries())
+        if chk.get_active():
+            if cc not in active:
+                active.append(cc)
+        else:
+            active = [c for c in active if c != cc]
+        s.tsl_active_countries = active
+        save_settings(s)
+
+    def _on_refresh_country_clicked(self, _button, cc: str):
+        self._parent.start_tsl_refresh(silent=False, country=cc)
+
+    def _on_remove_country_clicked(self, _button, cc: str):
+        from sigillum.core.tsl import signing_pem_path, tsa_pem_path
+        for p in (signing_pem_path(cc), tsa_pem_path(cc)):
+            try:
+                p.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError as ex:
+                _show_error(self._parent,
+                            _("Could not remove {p}: {ex}").format(p=p, ex=ex))
+                return
+        s = load_settings()
+        s.tsl_imports.pop(cc, None)
+        if cc in s.tsl_active_countries:
+            s.tsl_active_countries = [c for c in s.tsl_active_countries if c != cc]
+        save_settings(s)
+        self._rebuild_tsl_country_list()
+
+    def _on_add_country_clicked(self, _button):
+        from sigillum.core.settings import LOTL_COUNTRIES
+        from sigillum.core.tsl import list_imported_countries
+
+        already = set(list_imported_countries())
+        candidates = sorted(LOTL_COUNTRIES - already)
+        if not candidates:
+            _show_error(self._parent,
+                        _("All EU countries are already imported."))
+            return
+
+        dialog = Gtk.Dialog(
+            title=_("Add EU country"),
+            transient_for=self._parent,
+            flags=Gtk.DialogFlags.MODAL,
+        )
+        dialog.add_button(_("Cancel"), Gtk.ResponseType.CANCEL)
+        ok_btn = dialog.add_button(_("Import"), Gtk.ResponseType.OK)
+        ok_btn.get_style_context().add_class("suggested-action")
+
+        box = dialog.get_content_area()
+        box.set_spacing(8)
+        box.set_margin_start(12); box.set_margin_end(12)
+        box.set_margin_top(8); box.set_margin_bottom(8)
+        box.add(Gtk.Label(
+            label=_("Pick a country to download its national TSL via the EU LOTL."),
+            xalign=0, wrap=True,
+        ))
+        combo = Gtk.ComboBoxText()
+        for cc in candidates:
+            combo.append_text(_country_label(cc))
+        combo.set_active(0)
+        box.add(combo)
+        dialog.show_all()
+
+        try:
+            if dialog.run() == Gtk.ResponseType.OK:
+                idx = combo.get_active()
+                if 0 <= idx < len(candidates):
+                    self._parent.start_tsl_refresh(silent=False, country=candidates[idx])
+        finally:
+            dialog.destroy()
 
     def _refresh_tsl_age(self, iso_timestamp: str):
         days = import_age_days(iso_timestamp)
@@ -943,6 +1213,8 @@ class SettingsView(Gtk.Box):
 
         # TSL age — for the primary country
         self._refresh_tsl_age(s.last_import_for(s.effective_country()))
+        # Multi-country panel: dropdown + per-row list.
+        self._rebuild_tsl_country_list()
 
         self._device_status.set_text(_("Configured: {value}").format(value=s.describe()))
 
