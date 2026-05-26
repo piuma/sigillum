@@ -1,31 +1,22 @@
 Source: python-endesive
 Section: python
 Priority: optional
-<<<<<<< HEAD
 Maintainer: Danilo Abbasciano <danilo@piumalab.org>
-=======
-Maintainer: Danilo Abbasciano <danilo.abbasciano@par-tec.it>
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
 Build-Depends:
  debhelper-compat (= 13),
  dh-python,
  pybuild-plugin-pyproject,
  python3-all,
  python3-setuptools,
-<<<<<<< HEAD
  python3-wheel,
-=======
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
  python3-cryptography <!nocheck>,
  python3-asn1crypto <!nocheck>,
  python3-pil <!nocheck>,
  python3-lxml <!nocheck>,
-<<<<<<< HEAD
  python3-pykcs11 <!nocheck>,
  python3-requests <!nocheck>,
  python3-paramiko <!nocheck>,
-=======
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
+ python3-attr <!nocheck>,
  python3-pytest <!nocheck>,
 Standards-Version: 4.7.0
 Homepage: https://github.com/m32/endesive
@@ -42,14 +33,10 @@ Depends:
  python3-asn1crypto,
  python3-pil,
  python3-lxml,
-<<<<<<< HEAD
  python3-pykcs11,
  python3-requests,
  python3-paramiko,
-=======
-Recommends:
- python3-pykcs11,
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
+ python3-attr,
 Description: Python library for PAdES/CAdES/XAdES digital signatures
  endesive is a pure-Python library implementing the ETSI standards for
  advanced electronic signatures, with support for both software and

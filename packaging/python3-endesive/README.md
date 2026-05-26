@@ -13,7 +13,54 @@ the upstream source and drop these files into it.
 
 MIT (see <https://github.com/m32/endesive/blob/master/LICENSE>). DFSG-free.
 
-## Workflow
+## Quick local build (recommended for users)
+
+If you only need a working `python3-endesive_X.Y.Z-1_all.deb` to satisfy
+Sigillum's `Depends: python3-endesive`, run the snippet below. It does
+**not** include the Debian-mentoring workflow (ITP bug, lintian audit,
+sponsor upload) — see [Full upstream workflow](#full-upstream-workflow)
+for that.
+
+```bash
+# Work outside the sigillum checkout to keep its source tree clean.
+mkdir -p ~/work/endesive && cd ~/work/endesive
+VERSION=2.19.3
+
+# 1. Extra build deps for endesive (everything else is already in
+#    sigillum's build-deps).
+sudo apt install python3-pil python3-paramiko python3-wheel \
+                 debhelper dh-python pybuild-plugin-pyproject \
+                 python3-setuptools devscripts
+
+# 2. Fetch upstream tarball — endesive ships wheel-only on PyPI, so we
+#    pull the source from GitHub by tag.
+curl -sL -o endesive_${VERSION}.orig.tar.gz \
+    https://github.com/m32/endesive/archive/refs/tags/v${VERSION}.tar.gz
+
+# 3. Extract + overlay the debian/ template shipped with sigillum.
+tar xf endesive_${VERSION}.orig.tar.gz
+cd endesive-${VERSION}
+cp -r /path/to/sigillum/packaging/python3-endesive/debian .
+
+# 4. Build the .deb.
+dpkg-buildpackage -us -uc -b
+
+# 5. Install it system-wide so sigillum can pick it up at build time.
+sudo dpkg -i ../python3-endesive_${VERSION}-1_all.deb \
+    || sudo apt install -f -y
+
+# 6. Now sigillum builds.
+cd /path/to/sigillum
+dpkg-buildpackage -us -uc -b
+```
+
+The endesive `.deb` is not maintained by apt — when upstream releases a
+new version you have to repeat steps 2-5 with the new `VERSION`.
+
+## Full upstream workflow
+
+Steps for proposing `python3-endesive` for inclusion in Debian (ITP →
+review → sponsor upload). Skip this if you only need the local `.deb`.
 
 ```bash
 # 1. File an ITP (Intent To Package) bug:

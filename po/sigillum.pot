@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: sigillum 0.1.0\n"
 "Report-Msgid-Bugs-To: danilo@piumalab.org\n"
-"POT-Creation-Date: 2026-05-26 08:53+0200\n"
+"POT-Creation-Date: 2026-05-26 09:27+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1075,7 +1075,7 @@ msgid "Signing device"
 msgstr ""
 
 #: src/sigillum/gui/app.py:233 src/sigillum/gui/app.py:1755
-#: src/sigillum/gui/app.py:2570 src/sigillum/gui/app.py:2637
+#: src/sigillum/gui/app.py:2570 src/sigillum/gui/app.py:2699
 msgid "Timestamp"
 msgstr ""
 
@@ -1529,7 +1529,7 @@ msgstr ""
 msgid "LT — Long Term (embedded chain + revocation)"
 msgstr ""
 
-#: src/sigillum/gui/app.py:1414 src/sigillum/gui/app.py:2635
+#: src/sigillum/gui/app.py:1414 src/sigillum/gui/app.py:2697
 msgid "Sign"
 msgstr ""
 
@@ -1724,7 +1724,7 @@ msgid "All files"
 msgstr ""
 
 #: src/sigillum/gui/app.py:1916 src/sigillum/gui/app.py:2050
-#: src/sigillum/gui/app.py:2638
+#: src/sigillum/gui/app.py:2700
 msgid "Encrypt"
 msgstr ""
 
@@ -1757,7 +1757,7 @@ msgstr ""
 msgid "Password / PIN:"
 msgstr ""
 
-#: src/sigillum/gui/app.py:2053 src/sigillum/gui/app.py:2639
+#: src/sigillum/gui/app.py:2053 src/sigillum/gui/app.py:2701
 msgid "Decrypt"
 msgstr ""
 
@@ -1884,7 +1884,7 @@ msgstr ""
 msgid "Use the imported AgID TSL"
 msgstr ""
 
-#: src/sigillum/gui/app.py:2394 src/sigillum/gui/app.py:2636
+#: src/sigillum/gui/app.py:2394 src/sigillum/gui/app.py:2698
 msgid "Verify"
 msgstr ""
 
@@ -1989,28 +1989,28 @@ msgstr ""
 msgid "untrusted TSA"
 msgstr ""
 
-#: src/sigillum/gui/app.py:2640
+#: src/sigillum/gui/app.py:2702
 msgid "Settings"
 msgstr ""
 
-#: src/sigillum/gui/app.py:2716
+#: src/sigillum/gui/app.py:2784
 msgid "✓ signature verified (LOTL-anchored)"
 msgstr ""
 
-#: src/sigillum/gui/app.py:2718
+#: src/sigillum/gui/app.py:2786
 msgid "✓ signature verified (no LOTL)"
 msgstr ""
 
-#: src/sigillum/gui/app.py:2720
+#: src/sigillum/gui/app.py:2788
 msgid "⚠ signature not verified"
 msgstr ""
 
-#: src/sigillum/gui/app.py:2721
+#: src/sigillum/gui/app.py:2789
 #, python-brace-format
 msgid "{cc}: {n_sign} signing CAs, {n_tsa} TSA CAs — {sig}"
 msgstr ""
 
-#: src/sigillum/gui/app.py:2744
+#: src/sigillum/gui/app.py:2812
 #, python-brace-format
 msgid "TSL import failed: {msg}"
 msgstr ""

@@ -7,7 +7,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
-"POT-Creation-Date: 2026-05-22 10:57+0200\n"
+"Report-Msgid-Bugs-To: danilo@piumalab.org\n"
+"POT-Creation-Date: 2026-05-26 12:41+0200\n"
 "PO-Revision-Date: 2026-05-22 10:57+0200\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -18,365 +19,398 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #. type: TH
-#: docs/sigillum.1:3
+#: sigillum.1:3
 #, no-wrap
 msgid "SIGILLUM"
 msgstr ""
 
 #. type: TH
-#: docs/sigillum.1:3
+#: sigillum.1:3
 #, no-wrap
 msgid "2026-05-22"
 msgstr ""
 
 #. type: TH
-#: docs/sigillum.1:3
+#: sigillum.1:3
 #, no-wrap
 msgid "sigillum 0.1.0"
 msgstr ""
 
 #. type: TH
-#: docs/sigillum.1:3
+#: sigillum.1:3
 #, no-wrap
 msgid "User Commands"
 msgstr "Comandi utente"
 
 #. type: SH
-#: docs/sigillum.1:4
+#: sigillum.1:4
 #, no-wrap
 msgid "NAME"
 msgstr "NOME"
 
 #. type: Plain text
-#: docs/sigillum.1:6
+#: sigillum.1:6
 msgid ""
 "sigillum - digital signature, timestamping and encryption of documents "
 "(PAdES/CAdES/XAdES)"
-msgstr "sigillum - firma digitale, marca temporale e cifratura di documenti (PAdES/CAdES/XAdES)"
+msgstr ""
+"sigillum - firma digitale, marca temporale e cifratura di documenti (PAdES/"
+"CAdES/XAdES)"
 
 #. type: SH
-#: docs/sigillum.1:6
+#: sigillum.1:6
 #, no-wrap
 msgid "SYNOPSIS"
 msgstr "SINOSSI"
 
 #. type: Plain text
-#: docs/sigillum.1:11
+#: sigillum.1:11
 msgid "B<sigillum> [I<OPTIONS>] [I<COMMAND>] [I<ARGS>...]"
 msgstr "B<sigillum> [I<OPZIONI>] [I<COMANDO>] [I<ARGOMENTI>...]"
 
 #. type: SH
-#: docs/sigillum.1:11
+#: sigillum.1:11
 #, no-wrap
 msgid "DESCRIPTION"
 msgstr "DESCRIZIONE"
 
 #. type: Plain text
-#: docs/sigillum.1:26
+#: sigillum.1:26
 msgid ""
 "B<sigillum> is a GTK desktop application for digital signature, timestamping "
 "and encryption of documents according to the ETSI/eIDAS standards. It "
 "supports the B<PAdES> (signed PDF), B<CAdES> (.p7m enveloping), B<XAdES> "
 "(XML enveloped) formats, and standalone B<TSR> (RFC 3161) and B<TSD> (ETSI "
 "TS 119 422) timestamps."
-msgstr "B<sigillum> è un'applicazione desktop GTK per firma digitale, marca temporale e cifratura di documenti secondo gli standard ETSI/eIDAS. Supporta i formati B<PAdES> (PDF firmati), B<CAdES> (.p7m enveloping), B<XAdES> (XML enveloped) e marche temporali standalone B<TSR> (RFC 3161) e B<TSD> (ETSI TS 119 422)."
+msgstr ""
+"B<sigillum> è un'applicazione desktop GTK per firma digitale, marca "
+"temporale e cifratura di documenti secondo gli standard ETSI/eIDAS. Supporta "
+"i formati B<PAdES> (PDF firmati), B<CAdES> (.p7m enveloping), B<XAdES> (XML "
+"enveloped) e marche temporali standalone B<TSR> (RFC 3161) e B<TSD> (ETSI TS "
+"119 422)."
 
 #. type: Plain text
-#: docs/sigillum.1:31
+#: sigillum.1:31
 msgid ""
 "Without arguments, B<sigillum> starts the graphical interface. With a "
 "subcommand it performs the requested operation and exits, making it usable "
 "from scripts."
-msgstr "Senza argomenti, B<sigillum> avvia l'interfaccia grafica. Con un sottocomando esegue l'operazione richiesta e termina, rendendone possibile l'uso in script."
+msgstr ""
+"Senza argomenti, B<sigillum> avvia l'interfaccia grafica. Con un "
+"sottocomando esegue l'operazione richiesta e termina, rendendone possibile "
+"l'uso in script."
 
 #. type: SH
-#: docs/sigillum.1:31
+#: sigillum.1:31
 #, no-wrap
 msgid "COMMANDS"
 msgstr "COMANDI"
 
 #. type: TP
-#: docs/sigillum.1:32
+#: sigillum.1:32
 #, no-wrap
 msgid "B<sign >I<FILE> [I<--level B|T|LT>] [I<-o OUTPUT>]"
 msgstr "B<sign >I<FILE> [I<--level B|T|LT>] [I<-o OUTPUT>]"
 
 #. type: Plain text
-#: docs/sigillum.1:36
+#: sigillum.1:36
+#, fuzzy
 msgid ""
-"Sign the file. The format is derived from the extension (\\&.pdf → PAdES, "
-"\\&.xml → XAdES, anything else → CAdES)."
-msgstr "Firma il file. Il formato è dedotto dall'estensione (\\&.pdf → PAdES, \\&.xml → XAdES, altro → CAdES)."
+"Sign the file. The format is derived from the extension: pdf gives PAdES, "
+"xml gives XAdES, anything else gives CAdES."
+msgstr ""
+"Firma il file. Il formato è dedotto dall'estensione: pdf dà PAdES, xml dà "
+"XAdES, qualsiasi altro dà CAdES."
+"Firma il file. Il formato è dedotto dall'estensione (\\&.pdf → PAdES, "
+"\\&.xml → XAdES, altro → CAdES)."
 
 #. type: TP
-#: docs/sigillum.1:36
+#: sigillum.1:36
 #, no-wrap
 msgid "B<verify >I<FILE> [I<--original FILE>] [I<--trusted CA.pem>] [I<--json>]"
 msgstr "B<verify >I<FILE> [I<--original FILE>] [I<--trusted CA.pem>] [I<--json>]"
 
 #. type: Plain text
-#: docs/sigillum.1:41
+#: sigillum.1:41
 msgid ""
 "Verify a signature or a timestamp. For .tsr files I<--original> is required."
-msgstr "Verifica una firma o una marca temporale. Per i file .tsr serve I<--original>."
+msgstr ""
+"Verifica una firma o una marca temporale. Per i file .tsr serve I<--"
+"original>."
 
 #. type: TP
-#: docs/sigillum.1:41
+#: sigillum.1:41
 #, no-wrap
 msgid "B<timestamp >I<FILE> [I<--format tsr|tsd>]"
 msgstr "B<timestamp >I<FILE> [I<--format tsr|tsd>]"
 
 #. type: Plain text
-#: docs/sigillum.1:44
+#: sigillum.1:44
 msgid "Timestamp a file via RFC 3161."
 msgstr "Marca temporalmente un file via RFC 3161."
 
 #. type: TP
-#: docs/sigillum.1:44
+#: sigillum.1:44
 #, no-wrap
 msgid "B<encrypt >I<FILE> [I<--mode sym|asym>] [I<--algo NAME>] [I<--recipient CERT>]"
 msgstr "B<encrypt >I<FILE> [I<--mode sym|asym>] [I<--algo NAME>] [I<--recipient CERT>]"
 
 #. type: Plain text
-#: docs/sigillum.1:48
+#: sigillum.1:48
 msgid ""
 "Encrypt the file. Either symmetric mode (AES-256 default) or asymmetric (CMS "
 "EnvelopedData against a certificate)."
-msgstr "Cifra il file. Modalità simmetrica (AES-256 default) oppure asimmetrica (CMS EnvelopedData verso un certificato)."
+msgstr ""
+"Cifra il file. Modalità simmetrica (AES-256 default) oppure asimmetrica (CMS "
+"EnvelopedData verso un certificato)."
 
 #. type: TP
-#: docs/sigillum.1:48
+#: sigillum.1:48
 #, no-wrap
 msgid "B<decrypt >I<FILE>"
 msgstr "B<decrypt >I<FILE>"
 
 #. type: Plain text
-#: docs/sigillum.1:51
+#: sigillum.1:51
 msgid "Decrypt the file. The format (SIGILLUM or CMS) is auto-detected."
 msgstr "Decifra il file. Il formato (SIGILLUM o CMS) è auto-rilevato."
 
 #. type: TP
-#: docs/sigillum.1:51
+#: sigillum.1:51
 #, no-wrap
 msgid "B<tsl-import>"
 msgstr "B<tsl-import>"
 
 #. type: Plain text
-#: docs/sigillum.1:54
+#: sigillum.1:54
 msgid "Download the AgID Trust List into local PEM bundles."
 msgstr "Scarica la Trust List AgID nei bundle PEM locali."
 
 #. type: TP
-#: docs/sigillum.1:54
+#: sigillum.1:54
 #, no-wrap
 msgid "B<detect>"
 msgstr "B<detect>"
 
 #. type: Plain text
-#: docs/sigillum.1:58
+#: sigillum.1:58
 msgid ""
 "List the available PKCS#11 drivers, the detected USB tokens and the "
 "certificates on each token."
-msgstr "Elenca i driver PKCS#11 disponibili, i token USB rilevati e i certificati su ciascun token."
+msgstr ""
+"Elenca i driver PKCS#11 disponibili, i token USB rilevati e i certificati su "
+"ciascun token."
 
 #. type: TP
-#: docs/sigillum.1:58
+#: sigillum.1:58
 #, no-wrap
 msgid "B<config show >|B< config set >[I<options>]"
 msgstr "B<config show >|B< config set >[I<opzioni>]"
 
 #. type: Plain text
-#: docs/sigillum.1:62
+#: sigillum.1:62
 msgid ""
 "Show or modify the persistent configuration (signing device, TSA, visible "
 "signature)."
-msgstr "Mostra o modifica la configurazione persistente (dispositivo di firma, TSA, firma visibile)."
+msgstr ""
+"Mostra o modifica la configurazione persistente (dispositivo di firma, TSA, "
+"firma visibile)."
 
 #. type: TP
-#: docs/sigillum.1:62
+#: sigillum.1:62
 #, no-wrap
 msgid "B<gui>"
 msgstr "B<gui>"
 
 #. type: Plain text
-#: docs/sigillum.1:65
+#: sigillum.1:65
 msgid "Launch the graphical interface."
 msgstr "Avvia l'interfaccia grafica."
 
 #. type: SH
-#: docs/sigillum.1:65
+#: sigillum.1:65
 #, no-wrap
 msgid "COMMON OPTIONS"
 msgstr "OPZIONI COMUNI"
 
 #. type: TP
-#: docs/sigillum.1:66
+#: sigillum.1:66
 #, no-wrap
 msgid "B<-h, --help>"
 msgstr "B<-h, --help>"
 
 #. type: Plain text
-#: docs/sigillum.1:69
+#: sigillum.1:69
 msgid "Print the help message."
 msgstr "Stampa il messaggio di aiuto."
 
 #. type: TP
-#: docs/sigillum.1:69
+#: sigillum.1:69
 #, no-wrap
 msgid "B<-V, --version>"
 msgstr "B<-V, --version>"
 
 #. type: Plain text
-#: docs/sigillum.1:72
+#: sigillum.1:72
 msgid "Print the version."
 msgstr "Stampa la versione."
 
 #. type: SH
-#: docs/sigillum.1:72
+#: sigillum.1:72
 #, no-wrap
 msgid "SIGN OPTIONS"
 msgstr "OPZIONI DI SIGN"
 
 #. type: TP
-#: docs/sigillum.1:73
+#: sigillum.1:73
 #, no-wrap
 msgid "B<--level>I< { B | T | LT }>"
 msgstr "B<--level>I< { B | T | LT }>"
 
 #. type: Plain text
-#: docs/sigillum.1:77
+#: sigillum.1:77
 msgid ""
 "Signature level. B = basic, T = with timestamp, LT = long-term (with "
 "embedded chain and revocation data). Default: B."
-msgstr "Livello firma. B = base, T = con marca temporale, LT = long-term (con catena e dati di revoca embeddati). Default: B."
+msgstr ""
+"Livello firma. B = base, T = con marca temporale, LT = long-term (con catena "
+"e dati di revoca embeddati). Default: B."
 
 #. type: TP
-#: docs/sigillum.1:77
+#: sigillum.1:77
 #, no-wrap
 msgid "B<--cert>I< FILE>"
 msgstr "B<--cert>I< FILE>"
 
 #. type: Plain text
-#: docs/sigillum.1:80
+#: sigillum.1:80
 msgid "Use the given PKCS#12 (.p12/.pfx) or PEM file."
 msgstr "Usa il file PKCS#12 (.p12/.pfx) o PEM indicato."
 
 #. type: TP
-#: docs/sigillum.1:80
+#: sigillum.1:80
 #, no-wrap
 msgid "B<--lib>I< PATH >B<--cert-id>I< ID>"
 msgstr "B<--lib>I< PATH >B<--cert-id>I< ID>"
 
 #. type: Plain text
-#: docs/sigillum.1:86
+#: sigillum.1:86
 msgid ""
 "Use the given PKCS#11 token. See B<sigillum detect> for the value of I<ID>."
-msgstr "Usa il token PKCS#11 indicato. Vedi B<sigillum detect> per il valore di I<ID>."
+msgstr ""
+"Usa il token PKCS#11 indicato. Vedi B<sigillum detect> per il valore di "
+"I<ID>."
 
 #. type: TP
-#: docs/sigillum.1:86
+#: sigillum.1:86
 #, no-wrap
 msgid "B<--tsa>I< URL>"
 msgstr "B<--tsa>I< URL>"
 
 #. type: Plain text
-#: docs/sigillum.1:89
+#: sigillum.1:89
 msgid "URL of the Time-Stamp Authority."
 msgstr "URL dell'autorità di marcatura temporale."
 
 #. type: TP
-#: docs/sigillum.1:89
+#: sigillum.1:89
 #, no-wrap
 msgid "B<--visible>"
 msgstr "B<--visible>"
 
 #. type: Plain text
-#: docs/sigillum.1:97
+#: sigillum.1:97
 msgid ""
 "PAdES: draw a visible signature on the PDF (optional logo via I<--image>, "
 "position via I<--position> or I<--box>)."
-msgstr "PAdES: applica una firma visibile sul PDF (logo opzionale via I<--image>, posizione via I<--position> o I<--box>)."
+msgstr ""
+"PAdES: applica una firma visibile sul PDF (logo opzionale via I<--image>, "
+"posizione via I<--position> o I<--box>)."
 
 #. type: SH
-#: docs/sigillum.1:97
+#: sigillum.1:97
 #, no-wrap
 msgid "ENVIRONMENT"
 msgstr "AMBIENTE"
 
 #. type: TP
-#: docs/sigillum.1:98
+#: sigillum.1:98
 #, no-wrap
 msgid "B<SIGILLUM_PIN>"
 msgstr "B<SIGILLUM_PIN>"
 
 #. type: Plain text
-#: docs/sigillum.1:103
+#: sigillum.1:103
 msgid ""
 "PIN of the PKCS#11 token. If unset, B<sigillum> asks for it on the terminal."
 msgstr "PIN del token PKCS#11. Se assente, B<sigillum> lo chiede da terminale."
 
 #. type: TP
-#: docs/sigillum.1:103
+#: sigillum.1:103
 #, no-wrap
 msgid "B<SIGILLUM_PASSWORD>"
 msgstr "B<SIGILLUM_PASSWORD>"
 
 #. type: Plain text
-#: docs/sigillum.1:106
+#: sigillum.1:106
 msgid "Password of the PKCS#12 file or of the symmetric encryption."
 msgstr "Password del file PKCS#12 o della cifratura simmetrica."
 
 #. type: TP
-#: docs/sigillum.1:106
+#: sigillum.1:106
 #, no-wrap
 msgid "B<SIGILLUM_TSA_PASSWORD>"
 msgstr "B<SIGILLUM_TSA_PASSWORD>"
 
 #. type: Plain text
-#: docs/sigillum.1:109
+#: sigillum.1:109
 msgid "HTTP Basic password for the TSA."
 msgstr "Password HTTP Basic per la TSA."
 
 #. type: TP
-#: docs/sigillum.1:109
+#: sigillum.1:109
 #, no-wrap
 msgid "B<XDG_CONFIG_HOME>"
 msgstr "B<XDG_CONFIG_HOME>"
 
 #. type: Plain text
-#: docs/sigillum.1:116
+#: sigillum.1:116
 msgid ""
 "Override the configuration directory (default: I<~/.config>).  The "
 "configuration lives in I<~/.config/sigillum/settings.json> with permissions "
 "0600."
-msgstr "Sovrascrive la directory di configurazione (default: I<~/.config>). La configurazione è in I<~/.config/sigillum/settings.json> con permessi 0600."
+msgstr ""
+"Sovrascrive la directory di configurazione (default: I<~/.config>). La "
+"configurazione è in I<~/.config/sigillum/settings.json> con permessi 0600."
 
 #. type: TP
-#: docs/sigillum.1:116
+#: sigillum.1:116
 #, no-wrap
 msgid "B<XDG_DATA_HOME>"
 msgstr "B<XDG_DATA_HOME>"
 
 #. type: Plain text
-#: docs/sigillum.1:122
+#: sigillum.1:122
 msgid ""
 "Override the data directory (default: I<~/.local/share>).  The PEM bundles "
 "for the AgID Trust List are in I<~/.local/share/sigillum/trusted/>."
-msgstr "Sovrascrive la directory dati (default: I<~/.local/share>). I bundle PEM della Trust List AgID sono in I<~/.local/share/sigillum/trusted/>."
+msgstr ""
+"Sovrascrive la directory dati (default: I<~/.local/share>). I bundle PEM "
+"della Trust List AgID sono in I<~/.local/share/sigillum/trusted/>."
 
 #. type: SH
-#: docs/sigillum.1:122
+#: sigillum.1:122
 #, no-wrap
 msgid "EXAMPLES"
 msgstr "ESEMPI"
 
 #. type: Plain text
-#: docs/sigillum.1:124
+#: sigillum.1:124
 msgid "Sign a PDF at level T against FreeTSA:"
 msgstr "Firma un PDF a livello T verso FreeTSA:"
 
 #. type: Plain text
-#: docs/sigillum.1:130
+#: sigillum.1:130
 #, no-wrap
 msgid ""
 "SIGILLUM_PASSWORD=secret sigillum sign document.pdf \\e\n"
@@ -386,17 +420,18 @@ msgstr ""
 "SIGILLUM_PASSWORD=segreta sigillum sign documento.pdf \\e\n"
 "    --cert mio.p12 --level T \\e\n"
 "    --tsa https://freetsa.org/tsr\n"
-""
 
 #. type: Plain text
-#: docs/sigillum.1:135
+#: sigillum.1:135
 msgid ""
 "Sign a PDF with a YubiKey, applying a visible signature on the bottom-right "
 "corner:"
-msgstr "Firma un PDF con una YubiKey, applicando una firma visibile nell'angolo in basso a destra:"
+msgstr ""
+"Firma un PDF con una YubiKey, applicando una firma visibile nell'angolo in "
+"basso a destra:"
 
 #. type: Plain text
-#: docs/sigillum.1:142
+#: sigillum.1:142
 #, no-wrap
 msgid ""
 "SIGILLUM_PIN=123456 sigillum sign report.pdf \\e\n"
@@ -408,263 +443,264 @@ msgstr ""
 "    --lib /usr/lib/x86_64-linux-gnu/libykcs11.so.2 \\e\n"
 "    --cert-id 02:9c67ef95f0e64305 \\e\n"
 "    --visible --position bottom-right --image logo.png\n"
-""
 
 #. type: Plain text
-#: docs/sigillum.1:146
+#: sigillum.1:146
 msgid "Verify a signed file with JSON output:"
 msgstr "Verifica un file firmato con output JSON:"
 
 #. type: Plain text
-#: docs/sigillum.1:150
+#: sigillum.1:150
 #, no-wrap
 msgid "sigillum verify document.signed.pdf --json\n"
-msgstr ""
-"sigillum verify documento.signed.pdf --json\n"
-""
+msgstr "sigillum verify documento.signed.pdf --json\n"
 
 #. type: Plain text
-#: docs/sigillum.1:154
+#: sigillum.1:154
 msgid "Encrypt symmetrically with AES-256:"
 msgstr "Cifra simmetricamente con AES-256:"
 
 #. type: Plain text
-#: docs/sigillum.1:158
+#: sigillum.1:158
 #, no-wrap
 msgid "SIGILLUM_PASSWORD=pwd sigillum encrypt secret.txt\n"
-msgstr ""
-"SIGILLUM_PASSWORD=pwd sigillum encrypt segreto.txt\n"
-""
+msgstr "SIGILLUM_PASSWORD=pwd sigillum encrypt segreto.txt\n"
 
 #. type: SH
-#: docs/sigillum.1:160
+#: sigillum.1:160
 #, no-wrap
 msgid "EXIT STATUS"
 msgstr "STATO DI USCITA"
 
 #. type: TP
-#: docs/sigillum.1:161
+#: sigillum.1:161
 #, no-wrap
 msgid "B<0>"
 msgstr "B<0>"
 
 #. type: Plain text
-#: docs/sigillum.1:164
+#: sigillum.1:164
 msgid "success."
 msgstr "successo."
 
 #. type: TP
-#: docs/sigillum.1:164
+#: sigillum.1:164
 #, no-wrap
 msgid "B<1>"
 msgstr "B<1>"
 
 #. type: Plain text
-#: docs/sigillum.1:167
+#: sigillum.1:167
 msgid "user error (wrong argument, missing file, missing configuration)."
-msgstr "errore utente (argomento errato, file mancante, configurazione assente)."
+msgstr ""
+"errore utente (argomento errato, file mancante, configurazione assente)."
 
 #. type: TP
-#: docs/sigillum.1:167
+#: sigillum.1:167
 #, no-wrap
 msgid "B<2>"
 msgstr "B<2>"
 
 #. type: Plain text
-#: docs/sigillum.1:170
+#: sigillum.1:170
 msgid ""
 "external-service error (TSA unreachable, network error, signing failed)."
-msgstr "errore di servizio esterno (TSA irraggiungibile, errore di rete, firma fallita)."
+msgstr ""
+"errore di servizio esterno (TSA irraggiungibile, errore di rete, firma "
+"fallita)."
 
 #. type: TP
-#: docs/sigillum.1:170
+#: sigillum.1:170
 #, no-wrap
 msgid "B<3>"
 msgstr "B<3>"
 
 #. type: Plain text
-#: docs/sigillum.1:173
+#: sigillum.1:173
 msgid ""
 "signature verification did not succeed (invalid signature or untrusted "
 "chain)."
 msgstr "verifica firma non riuscita (firma o catena non valida)."
 
 #. type: TP
-#: docs/sigillum.1:173
+#: sigillum.1:173
 #, no-wrap
 msgid "B<130>"
 msgstr "B<130>"
 
 #. type: Plain text
-#: docs/sigillum.1:176
+#: sigillum.1:176
 msgid "interrupted by SIGINT."
 msgstr "interrotto da SIGINT."
 
 #. type: SH
-#: docs/sigillum.1:176
+#: sigillum.1:176
 #, no-wrap
 msgid "FILES"
 msgstr "FILE"
 
 #. type: TP
-#: docs/sigillum.1:177
+#: sigillum.1:177
 #, no-wrap
 msgid "I<~/.config/sigillum/settings.json>"
 msgstr "I<~/.config/sigillum/settings.json>"
 
 #. type: Plain text
-#: docs/sigillum.1:181
+#: sigillum.1:181
 msgid ""
 "Persistent configuration (signing device, TSA, visible signature).  "
 "Permissions 0600 because it may contain the HTTP Basic password of the TSA."
-msgstr "Configurazione persistente (dispositivo di firma, TSA, firma visibile). Permessi 0600 perché può contenere la password HTTP Basic della TSA."
+msgstr ""
+"Configurazione persistente (dispositivo di firma, TSA, firma visibile). "
+"Permessi 0600 perché può contenere la password HTTP Basic della TSA."
 
 #. type: TP
-#: docs/sigillum.1:181
+#: sigillum.1:181
 #, no-wrap
 msgid "I<~/.local/share/sigillum/trusted/it-eidas-signing.pem>"
 msgstr "I<~/.local/share/sigillum/trusted/it-eidas-signing.pem>"
 
 #. type: Plain text
-#: docs/sigillum.1:184
+#: sigillum.1:184
 msgid "Bundle of the Italian qualified signer CAs (AgID TSL)."
 msgstr "Bundle delle CA dei firmatari qualificati italiani (TSL AgID)."
 
 #. type: TP
-#: docs/sigillum.1:184
+#: sigillum.1:184
 #, no-wrap
 msgid "I<~/.local/share/sigillum/trusted/it-eidas-tsa.pem>"
 msgstr "I<~/.local/share/sigillum/trusted/it-eidas-tsa.pem>"
 
 #. type: Plain text
-#: docs/sigillum.1:187
+#: sigillum.1:187
 msgid "Bundle of the Italian qualified TSA CAs."
 msgstr "Bundle delle CA delle TSA qualificate italiane."
 
 #. type: SH
-#: docs/sigillum.1:187
+#: sigillum.1:187
 #, no-wrap
 msgid "STANDARDS"
 msgstr "STANDARD"
 
 #. type: TP
-#: docs/sigillum.1:188
+#: sigillum.1:188
 #, no-wrap
 msgid "B<ETSI EN 319 142>"
 msgstr "B<ETSI EN 319 142>"
 
 #. type: Plain text
-#: docs/sigillum.1:191
+#: sigillum.1:191
 msgid "PAdES (PDF Advanced Electronic Signatures)."
 msgstr "PAdES (PDF Advanced Electronic Signatures)."
 
 #. type: TP
-#: docs/sigillum.1:191
+#: sigillum.1:191
 #, no-wrap
 msgid "B<ETSI EN 319 122>"
 msgstr "B<ETSI EN 319 122>"
 
 #. type: Plain text
-#: docs/sigillum.1:194
+#: sigillum.1:194
 msgid "CAdES (CMS Advanced Electronic Signatures)."
 msgstr "CAdES (CMS Advanced Electronic Signatures)."
 
 #. type: TP
-#: docs/sigillum.1:194
+#: sigillum.1:194
 #, no-wrap
 msgid "B<ETSI EN 319 132>"
 msgstr "B<ETSI EN 319 132>"
 
 #. type: Plain text
-#: docs/sigillum.1:197
+#: sigillum.1:197
 msgid "XAdES (XML Advanced Electronic Signatures)."
 msgstr "XAdES (XML Advanced Electronic Signatures)."
 
 #. type: TP
-#: docs/sigillum.1:197
+#: sigillum.1:197
 #, no-wrap
 msgid "B<ETSI TS 119 612>"
 msgstr "B<ETSI TS 119 612>"
 
 #. type: Plain text
-#: docs/sigillum.1:200
+#: sigillum.1:200
 msgid "Trusted Lists."
 msgstr "Trusted List."
 
 #. type: TP
-#: docs/sigillum.1:200
+#: sigillum.1:200
 #, no-wrap
 msgid "B<ETSI TS 119 422>"
 msgstr "B<ETSI TS 119 422>"
 
 #. type: Plain text
-#: docs/sigillum.1:203
+#: sigillum.1:203
 msgid "TimeStampedData (TSD)."
 msgstr "TimeStampedData (TSD)."
 
 #. type: TP
-#: docs/sigillum.1:203
+#: sigillum.1:203
 #, no-wrap
 msgid "B<RFC 3161>"
 msgstr "B<RFC 3161>"
 
 #. type: Plain text
-#: docs/sigillum.1:206
+#: sigillum.1:206
 msgid "Time-Stamp Protocol (TSR)."
 msgstr "Time-Stamp Protocol (TSR)."
 
 #. type: TP
-#: docs/sigillum.1:206
+#: sigillum.1:206
 #, no-wrap
 msgid "B<RFC 5652>"
 msgstr "B<RFC 5652>"
 
 #. type: Plain text
-#: docs/sigillum.1:209
+#: sigillum.1:209
 msgid "Cryptographic Message Syntax (CMS)."
 msgstr "Cryptographic Message Syntax (CMS)."
 
 #. type: TP
-#: docs/sigillum.1:209
+#: sigillum.1:209
 #, no-wrap
 msgid "B<PKCS#11>"
 msgstr "B<PKCS#11>"
 
 #. type: Plain text
-#: docs/sigillum.1:212
+#: sigillum.1:212
 msgid "Cryptographic Token Interface (RSA Labs)."
 msgstr "Cryptographic Token Interface (RSA Labs)."
 
 #. type: SH
-#: docs/sigillum.1:212
+#: sigillum.1:212
 #, no-wrap
 msgid "BUGS"
 msgstr "BUG"
 
 #. type: Plain text
-#: docs/sigillum.1:216
+#: sigillum.1:216
 msgid ""
 "Report bugs at: E<.UR https://github.com/piuma/sigillum/issues> E<.UE .>"
-msgstr "Segnalare i bug a: E<.UR https://github.com/piuma/sigillum/issues> E<.UE .>"
+msgstr ""
+"Segnalare i bug a: E<.UR https://github.com/piuma/sigillum/issues> E<.UE .>"
 
 #. type: SH
-#: docs/sigillum.1:216
+#: sigillum.1:216
 #, no-wrap
 msgid "AUTHOR"
 msgstr "AUTORE"
 
 #. type: Plain text
-#: docs/sigillum.1:218
+#: sigillum.1:218
 msgid "Danilo Abbasciano E<lt>danilo@piumalab.orgE<gt>."
 msgstr "Danilo Abbasciano E<lt>danilo@piumalab.orgE<gt>."
 
 #. type: SH
-#: docs/sigillum.1:218
+#: sigillum.1:218
 #, no-wrap
 msgid "SEE ALSO"
 msgstr "VEDI ANCHE"
 
 #. type: Plain text
-#: docs/sigillum.1:221
+#: sigillum.1:221
 msgid "B<openssl>(1), B<pkcs11-tool>(1), B<yubico-piv-tool>(1)."
 msgstr "B<openssl>(1), B<pkcs11-tool>(1), B<yubico-piv-tool>(1)."

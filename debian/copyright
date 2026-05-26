@@ -1,6 +1,5 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: sigillum
-<<<<<<< HEAD
 Upstream-Contact: Danilo Abbasciano <danilo@piumalab.org>
 Source: https://github.com/piuma/sigillum
 
@@ -14,21 +13,6 @@ License: GPL-3.0-or-later
 
 Files: packaging/flatpak/io.github.sigillum.metainfo.xml
 Copyright: 2026 Danilo Abbasciano <danilo@piumalab.org>
-=======
-Upstream-Contact: Danilo Abbasciano <danilo.abbasciano@par-tec.it>
-Source: https://github.com/piuma/sigillum
-
-Files: *
-Copyright: 2026 Danilo Abbasciano <danilo.abbasciano@par-tec.it>
-License: GPL-3.0-or-later
-
-Files: debian/*
-Copyright: 2026 Danilo Abbasciano <danilo.abbasciano@par-tec.it>
-License: GPL-3.0-or-later
-
-Files: packaging/flatpak/io.github.sigillum.metainfo.xml
-Copyright: 2026 Danilo Abbasciano <danilo.abbasciano@par-tec.it>
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
 License: CC0-1.0
 Comment:
  AppStream metadata is released under CC0-1.0 per the Freedesktop

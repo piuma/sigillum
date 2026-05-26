@@ -6,12 +6,27 @@ Build the package from a Debian/Ubuntu machine:
     sudo apt install build-essential debhelper dh-python pybuild-plugin-pyproject \
                      python3-all python3-hatchling devscripts lintian
     sudo apt install python3-cryptography python3-asn1crypto python3-lxml \
-                     python3-pykcs11 python3-requests python3-pytest
-    # python3-endesive is NOT yet in Debian. See the separate sigillum-endesive
-    # packaging effort. Until it lands, build with `--no-check` or against a
-    # locally-built python3-endesive.
+                     python3-pykcs11 python3-requests python3-pytest po4a gettext
 
-    # From the project root:
+    # python3-endesive is NOT yet in Debian — sigillum's Build-Depends
+    # will fail until you build it locally from the template under
+    # packaging/python3-endesive/. See "Quick local build" in
+    # packaging/python3-endesive/README.md for a one-shot recipe; the
+    # essentials are:
+    #
+    #   mkdir -p ~/work/endesive && cd ~/work/endesive
+    #   VERSION=2.19.3
+    #   sudo apt install python3-pil python3-paramiko python3-wheel
+    #   curl -sL -o endesive_${VERSION}.orig.tar.gz \
+    #       https://github.com/m32/endesive/archive/refs/tags/v${VERSION}.tar.gz
+    #   tar xf endesive_${VERSION}.orig.tar.gz
+    #   cd endesive-${VERSION}
+    #   cp -r /path/to/sigillum/packaging/python3-endesive/debian .
+    #   dpkg-buildpackage -us -uc -b
+    #   sudo dpkg -i ../python3-endesive_${VERSION}-1_all.deb \
+    #       || sudo apt install -f -y
+
+    # From the sigillum project root:
     dpkg-buildpackage -us -uc -b
     lintian ../sigillum_0.1.0-1_all.deb
 

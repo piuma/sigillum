@@ -1,9 +1,49 @@
 sigillum (0.1.0-1) unstable; urgency=medium
 
-  * Initial release. (Closes: #XXXXXX)
+  * Initial release.
+  * Document signing:
+    - PAdES (signed PDF) Level B and T
+    - CAdES (.p7m enveloping) Level B and T
+    - XAdES (enveloped XML) Level B and T
+    - Visible PAdES signature with preset corner, optional logo and
+      mouse-driven box selection on a PDF preview.
+  * Document verification: separate checks for hash, signature, signer
+    chain, timestamp and TSA chain. Manual chain walker for Italian
+    qualified certificates lacking subjectAltName (required by
+    cryptography.PolicyBuilder).
+  * Standalone RFC 3161 timestamping: .tsr (detached evidence) and .tsd
+    (ETSI TS 119 422 envelope with embedded content).
+  * File encryption: symmetric with password (AES-256, AES-128, 3DES,
+    Blowfish in CBC + PKCS#7 + PBKDF2-SHA256), asymmetric against the
+    configured device, and asymmetric against an arbitrary PKCS#12
+    recipient (CMS EnvelopedData .p7e).
+  * Credentials:
+    - PKCS#12 files
+    - PKCS#11 hardware tokens (YubiKey via libykcs11, Bit4id
+      Digital-DNA Key via libbit4xpki, OpenSC for generic
+      smartcards/CNS/CIE)
+    - Auto-detection of inserted tokens + compatible driver, with
+      paths scanned in user homes for Aruba/InfoCamere/Dike installs.
+  * Multi-country eIDAS support:
+    - National Trust Lists for any EU/EEA member state are discovered
+      dynamically via the EU LOTL (no hardcoded URLs).
+    - Per-country PEM bundles under $XDG_DATA_HOME/sigillum/trusted/.
+    - Primary country derived from $LANG, with explicit override and a
+      list of additional countries to include in the verification
+      trust store.
+    - GUI panel in Settings: country dropdown, per-country refresh and
+      remove buttons, "+ Add EU country" dialog.
+    - CLI: tsl-import --country, tsl-list, config set
+      --country/--active-countries.
+  * TSL XMLDSig signature verification (ETSI TS 119 612) anchored to
+    the EU LOTL, supporting RSA-PKCS1v15 and RSA-PSS/MGF1.
+  * Background auto-refresh of the primary country's TSL at startup if
+    missing or older than 30 days.
+  * Full CLI mirroring every GUI operation: sign, verify, timestamp,
+    encrypt, decrypt, tsl-import, tsl-list, detect, config, gui.
+  * Settings persisted in ~/.config/sigillum/settings.json with mode
+    0600 (carries optional TSA Basic-Auth password).
+  * Italian translation (po/it.po, 100% coverage).
+  * Bilingual man page sigillum(1) (English source, Italian via po4a).
 
-<<<<<<< HEAD
- -- Danilo Abbasciano <danilo@piumalab.org>  Thu, 21 May 2026 17:00:00 +0200
-=======
- -- Danilo Abbasciano <danilo.abbasciano@par-tec.it>  Thu, 21 May 2026 17:00:00 +0200
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
+ -- Danilo Abbasciano <danilo@piumalab.org>  Tue, 26 May 2026 09:00:00 +0200

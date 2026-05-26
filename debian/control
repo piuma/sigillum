@@ -1,22 +1,15 @@
 Source: sigillum
 Section: utils
 Priority: optional
-<<<<<<< HEAD
 Maintainer: Danilo Abbasciano <danilo@piumalab.org>
-=======
-Maintainer: Danilo Abbasciano <danilo.abbasciano@par-tec.it>
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
 Build-Depends:
  debhelper-compat (= 13),
  dh-python,
  pybuild-plugin-pyproject,
  python3-all (>= 3.11),
  python3-hatchling,
-<<<<<<< HEAD
  gettext,
  po4a,
-=======
->>>>>>> 597b9e4 (add: Debian packaging e prerequisiti DFSG)
  python3-pytest <!nocheck>,
  python3-cryptography <!nocheck>,
  python3-asn1crypto <!nocheck>,
@@ -24,6 +17,7 @@ Build-Depends:
  python3-endesive <!nocheck>,
  python3-pykcs11 <!nocheck>,
  python3-requests <!nocheck>,
+ python3-attr <!nocheck>,
 Standards-Version: 4.7.0
 Homepage: https://github.com/piuma/sigillum
 Vcs-Browser: https://github.com/piuma/sigillum
@@ -44,6 +38,7 @@ Depends:
  python3-endesive,
  python3-pykcs11,
  python3-requests,
+ python3-attr,
 Recommends:
  opensc-pkcs11,
  yubico-piv-tool,

@@ -31,8 +31,8 @@ operation and exits, making it usable from scripts.
 .SH COMMANDS
 .TP
 .B sign \fIFILE\fR [\fI\-\-level B|T|LT\fR] [\fI\-o OUTPUT\fR]
-Sign the file. The format is derived from the extension
-(\&.pdf → PAdES, \&.xml → XAdES, anything else → CAdES).
+Sign the file. The format is derived from the extension: pdf gives PAdES,
+xml gives XAdES, anything else gives CAdES.
 .TP
 .B verify \fIFILE\fR [\fI\-\-original FILE\fR] [\fI\-\-trusted CA.pem\fR] [\fI\-\-json\fR]
 Verify a signature or a timestamp. For .tsr files
