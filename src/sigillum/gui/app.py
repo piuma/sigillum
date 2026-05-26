@@ -2632,12 +2632,19 @@ class SigillumWindow(Gtk.ApplicationWindow):
         self._settings_view = SettingsView(self)
 
         self._stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
-        self._stack.add_titled(self._sign_view, "sign", _("Sign"))
-        self._stack.add_titled(self._verify_view, "verify", _("Verify"))
-        self._stack.add_titled(self._mark_view, "mark", _("Timestamp"))
-        self._stack.add_titled(self._encrypt_view, "encrypt", _("Encrypt"))
-        self._stack.add_titled(self._decrypt_view, "decrypt", _("Decrypt"))
-        self._stack.add_titled(self._settings_view, "settings", _("Settings"))
+        # (view, name, title, icon-name). Icons use the freedesktop symbolic
+        # set — Adwaita and every mainstream Linux theme ship them.
+        tabs: list[tuple[Gtk.Widget, str, str, str]] = [
+            (self._sign_view,     "sign",     _("Sign"),      "document-edit-symbolic"),
+            (self._verify_view,   "verify",   _("Verify"),    "emblem-ok-symbolic"),
+            (self._mark_view,     "mark",     _("Timestamp"), "document-open-recent-symbolic"),
+            (self._encrypt_view,  "encrypt",  _("Encrypt"),   "system-lock-screen-symbolic"),
+            (self._decrypt_view,  "decrypt",  _("Decrypt"),   "changes-allow-symbolic"),
+            (self._settings_view, "settings", _("Settings"),  "preferences-system-symbolic"),
+        ]
+        for view, name, title, icon in tabs:
+            self._stack.add_titled(view, name, title)
+            self._stack.child_set_property(view, "icon-name", icon)
         # Refresh tabs that depend on settings whenever the user returns.
         self._stack.connect("notify::visible-child", self._on_tab_changed)
 
