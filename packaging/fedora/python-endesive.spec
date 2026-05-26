@@ -33,10 +33,13 @@ BuildRequires:  python3-pillow
 BuildRequires:  python3-pykcs11
 BuildRequires:  python3-requests
 BuildRequires:  python3-paramiko
-# endesive bundles PyPDF2_annotate which imports `attr` (the attrs library)
-# without declaring it in upstream's pyproject.toml. Pull it in explicitly so
-# the visible-signature code path doesn't crash at import time.
+# endesive imports `attr` (attrs), `certifi`, and `fontTools` from its
+# bundled PyPDF2_annotate / email / verify code paths without declaring any
+# of them in upstream's pyproject.toml. Pull them in explicitly so the
+# affected modules don't crash at import time during %check (and at runtime).
 BuildRequires:  python3-attrs
+BuildRequires:  python3-certifi
+BuildRequires:  python3-fonttools
 BuildRequires:  python3-pytest
 
 %global _description %{expand:
@@ -59,9 +62,12 @@ the base library.}
 %package -n python3-%{pypi_name}
 Summary:        %{summary}
 Recommends:     python3-pykcs11
-# Bundled PyPDF2_annotate imports `attr` but upstream's pyproject doesn't
-# declare it, so %%pyproject_save_files won't auto-generate this Requires.
+# Bundled PyPDF2_annotate / email / verify modules import `attr`,
+# `certifi` and `fontTools` but upstream's pyproject doesn't declare any
+# of them, so %%pyproject_save_files won't auto-generate these Requires.
 Requires:       python3-attrs
+Requires:       python3-certifi
+Requires:       python3-fonttools
 
 %description -n python3-%{pypi_name} %_description
 

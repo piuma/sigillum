@@ -18,6 +18,8 @@ Build-Depends:
  python3-pykcs11 <!nocheck>,
  python3-requests <!nocheck>,
  python3-attr <!nocheck>,
+ python3-certifi <!nocheck>,
+ python3-fonttools <!nocheck>,
 Standards-Version: 4.7.0
 Homepage: https://github.com/piuma/sigillum
 Vcs-Browser: https://github.com/piuma/sigillum
@@ -34,11 +36,12 @@ Depends:
  gir1.2-poppler-0.18,
  python3-cryptography,
  python3-asn1crypto,
- python3-lxml,
- python3-endesive,
+ python3-lxml, python3-endesive,
  python3-pykcs11,
  python3-requests,
  python3-attr,
+ python3-certifi,
+ python3-fonttools,
 Recommends:
  opensc-pkcs11,
  yubico-piv-tool,

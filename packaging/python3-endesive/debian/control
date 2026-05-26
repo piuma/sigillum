@@ -17,6 +17,8 @@ Build-Depends:
  python3-requests <!nocheck>,
  python3-paramiko <!nocheck>,
  python3-attr <!nocheck>,
+ python3-certifi <!nocheck>,
+ python3-fonttools <!nocheck>,
  python3-pytest <!nocheck>,
 Standards-Version: 4.7.0
 Homepage: https://github.com/m32/endesive
@@ -37,6 +39,8 @@ Depends:
  python3-requests,
  python3-paramiko,
  python3-attr,
+ python3-certifi,
+ python3-fonttools,
 Description: Python library for PAdES/CAdES/XAdES digital signatures
  endesive is a pure-Python library implementing the ETSI standards for
  advanced electronic signatures, with support for both software and
