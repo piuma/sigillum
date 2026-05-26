@@ -15,45 +15,77 @@ Files:
 Required tools on Fedora ≥ 41:
 
 ```bash
-sudo dnf install rpm-build rpmlint rpmautospec pyproject-rpm-macros \
-                 python3-hatchling python3-devel \
+sudo dnf install rpm-build rpmdevtools rpmlint rpmautospec \
+                 pyproject-rpm-macros python3-hatchling python3-devel \
                  desktop-file-utils libappstream-glib \
-                 fedpkg mock
+                 fedora-packager mock po4a gettext
+rpmdev-setuptree   # creates ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 ```
 
-### `sigillum`
+If `rpmlint` warns about
+`sh: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8)`,
+install the corresponding glibc langpack:
 
-Lint the spec, build the source RPM, then build the binary RPM:
+```bash
+sudo dnf install glibc-langpack-en
+```
+
+### `python-endesive` (build first — sigillum's build-deps require it)
+
+`endesive` is not in Fedora. The spec uses `%forgemeta` to fetch the
+source from GitHub by tag (upstream ships wheel-only on PyPI, no sdist).
+Build the RPM **once**, install it system-wide, and keep using it; when
+upstream releases a new version, bump `Version:` in the spec and repeat.
 
 ```bash
 cd packaging/fedora
 
-# Create a tarball matching the spec's Source0:
-TAG=v0.1.0
-git -C ../.. archive --format=tar.gz \
-    --prefix=sigillum-${TAG#v}/ HEAD \
-    -o ~/rpmbuild/SOURCES/sigillum-${TAG#v}.tar.gz
+# 1. Download the upstream tarball at the version pinned in the spec
+#    into ~/rpmbuild/SOURCES/ (spectool reads %forgesource).
+spectool -g -R python-endesive.spec
 
-# Spec lint (must be silent):
-rpmlint sigillum.spec
+# 2. Install endesive's own build deps (cryptography, asn1crypto, lxml,
+#    pillow, pykcs11, requests, paramiko, attrs, pytest, …).
+sudo dnf builddep -y python-endesive.spec
 
-# Source RPM:
-rpmautospec process-distgit sigillum.spec /tmp/sigillum.spec
-rpmbuild -bs --define "_sourcedir $HOME/rpmbuild/SOURCES" /tmp/sigillum.spec
+# 3. Spec lint (must be silent — warnings about en_US.UTF-8 are
+#    environmental, not from the spec; see the note above).
+LC_ALL=C.UTF-8 rpmlint python-endesive.spec
 
-# Binary RPM (uses your system as the chroot):
-rpmbuild -ba /tmp/sigillum.spec
+# 4. Build the binary RPM.
+rpmbuild -bb python-endesive.spec
+
+# 5. Install it so sigillum's build can resolve python3dist(endesive).
+sudo dnf install -y ~/rpmbuild/RPMS/noarch/python3-endesive-*.rpm
 ```
 
-### `python-endesive`
+The spec explicitly declares `Requires: python3-attrs` because endesive
+bundles `PyPDF2_annotate` (Autodesk 2019) which imports `attr` but is
+not listed in upstream's `pyproject.toml`. Drop that line once upstream
+fixes the metadata.
+
+### `sigillum`
 
 ```bash
-TAG=2.17.0
-spectool -g -R python-endesive.spec   # pulls from PyPI
-rpmlint python-endesive.spec
-rpmautospec process-distgit python-endesive.spec /tmp/python-endesive.spec
-rpmbuild -ba /tmp/python-endesive.spec
+cd packaging/fedora
+
+# 1. Install build deps. With python3-endesive installed (see above),
+#    %pyproject_buildrequires now resolves cleanly.
+sudo dnf builddep -y sigillum.spec
+
+# 2. Fetch the source tarball from GitHub (the spec uses %forgemeta —
+#    NOT a local working-tree archive).
+spectool -g -R sigillum.spec
+
+# 3. Spec lint.
+LC_ALL=C.UTF-8 rpmlint sigillum.spec
+
+# 4. Source RPM + binary RPM.
+rpmbuild -bs sigillum.spec
+rpmbuild -bb sigillum.spec
 ```
+
+The output is in `~/rpmbuild/RPMS/noarch/sigillum-<ver>.fc<NN>.noarch.rpm`.
 
 ### Reproducible chroot build with `mock`
 
@@ -62,14 +94,19 @@ sudo dnf install mock
 # Add your user to the `mock` group (logout/login required after first time):
 sudo usermod -a -G mock $USER
 
-mock -r fedora-43-x86_64 --rebuild ~/rpmbuild/SRPMS/python-endesive-2.17.0-1*.src.rpm
-mock -r fedora-43-x86_64 --addrepo /var/lib/mock/fedora-43-x86_64/result \
-      --rebuild ~/rpmbuild/SRPMS/sigillum-0.1.0-1*.src.rpm
+# Build endesive first.
+mock -r fedora-44-x86_64 --rebuild \
+     ~/rpmbuild/SRPMS/python-endesive-2.19.3-1*.src.rpm
+
+# Build sigillum, exposing the endesive result repo to the chroot.
+mock -r fedora-44-x86_64 \
+     --addrepo file:///var/lib/mock/fedora-44-x86_64/result \
+     --rebuild ~/rpmbuild/SRPMS/sigillum-0.1.0-1*.src.rpm
 ```
 
-The `--addrepo` step makes the freshly-built `python3-endesive` available to
-the Sigillum build inside the chroot, since the dependency isn't in Fedora's
-repos yet.
+The `--addrepo` step makes the freshly-built `python3-endesive` available
+to the Sigillum build inside the chroot, since the dependency isn't in
+Fedora's repos yet.
 
 ## Submitting to Fedora
 
