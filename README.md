@@ -24,10 +24,11 @@ Available Features:
 - **Auto-detection** of the PKCS#11 token + compatible driver
 - **Preview of the signature frame** in the settings
 - Device configuration, TSA (URL + optional Basic Auth) and logo persisted in `~/.config/sigillum/settings.json` (0600 because it may contain TSA passwords)
-- Import of the AgID Trust List (TSL) in local PEM bundles for validation of the signer chain and qualified Italian TSAs
-- Background auto-refresh of the TSL at startup if missing or older than 30 days
+- Import of national Trust Lists (TSLs) for **any EU/EEA member state** discovered via the EU LOTL; per-country PEM bundles, multi-country verification
+- Primary country derived from `$LANG` (Italian by default), with an explicit override and a list of additional countries to include in the verification trust store
+- Background auto-refresh of the primary country's TSL at startup if missing or older than 30 days
 - Validation of the cert chain via manual walker (necessary because qualified Italian certs often do not have the required `subjectAltName`) (`cryptography.PolicyBuilder`)
-- XMLDSig verification of the TSL signature with optional EU LOTL-anchored trust check (ETSI TS 119 612)
+- XMLDSig verification of the TSL signature with EU LOTL-anchored trust check (ETSI TS 119 612). Supports both RSA-PKCS1v15 (most countries) and RSA-PSS/MGF1 (Germany, etc.)
 
 Current limitations:
 
@@ -175,6 +176,35 @@ sigillum detect
 Exit code: `0` success, `1` User error (incorrect argument, missing file),
 `2` Service error (TSA unreachable, network), `3` Signature verification failed
 (untrusted chain, invalid hash, etc.).
+
+## Multi-country eIDAS support
+
+Sigillum supports the Trust Lists of every EU/EEA member state. The list of countries is discovered dynamically from the EU LOTL (`https://ec.europa.eu/tools/lotl/eu-lotl.xml`) — no hardcoded URLs.
+
+**Primary country**: derived from `$LANG` (e.g. `it_IT` → Italy, `de_DE` → Germany). Override via the GUI dropdown or the CLI:
+
+```bash
+sigillum config set --country DE              # set the primary country
+sigillum config set --country ""              # clear → fall back to $LANG
+```
+
+**Active countries** (those whose CAs are loaded into the verification trust store): defaults to the primary one. Add more to verify signatures issued in other countries:
+
+```bash
+sigillum config set --active-countries IT,DE,FR
+```
+
+**Per-country import**:
+
+```bash
+sigillum tsl-import                # imports the primary country
+sigillum tsl-import --country DE   # import a specific country
+sigillum tsl-list                  # show every imported country with its age
+```
+
+The TSL XMLDSig signature is verified against the certificates published in the EU LOTL (LOTL-anchored trust). Both PKCS1v15 and PSS/MGF1 signatures are accepted — the former is used by Italy and most member states, the latter by Germany among others.
+
+In the GUI, the **Settings → TSL** panel shows a primary-country dropdown, a list of imported countries with per-row refresh/remove buttons, and a *"+ Add EU country"* dialog.
 
 ## PKCS#11 Token
 

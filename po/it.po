@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: sigillum 0.1.0\n"
 "Report-Msgid-Bugs-To: danilo@piumalab.org\n"
-"POT-Creation-Date: 2026-05-22 10:20+0200\n"
+"POT-Creation-Date: 2026-05-26 08:53+0200\n"
 "PO-Revision-Date: 2026-05-22 10:20+0200\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -28,7 +28,7 @@ msgstr "errore: {msg}"
 msgid "{env_var} is not set and no terminal is available for the prompt"
 msgstr "{env_var} non impostata e nessun terminale per il prompt"
 
-#: src/sigillum/cli.py:65 src/sigillum/cli.py:458
+#: src/sigillum/cli.py:65 src/sigillum/cli.py:464
 msgid "input interrupted"
 msgstr "input interrotto"
 
@@ -37,581 +37,679 @@ msgstr "input interrotto"
 msgid "could not read {path}: {ex}"
 msgstr "impossibile leggere {path}: {ex}"
 
-#: src/sigillum/cli.py:100 src/sigillum/cli.py:120
+#: src/sigillum/cli.py:106 src/sigillum/cli.py:126
 #, python-brace-format
 msgid "Password for {name}: "
 msgstr "Password per {name}: "
 
-#: src/sigillum/cli.py:107 src/sigillum/cli.py:707
+#: src/sigillum/cli.py:113 src/sigillum/cli.py:773
 msgid "--lib and --cert-id must be passed together"
 msgstr "--lib e --cert-id devono essere passati insieme"
 
-#: src/sigillum/cli.py:109 src/sigillum/cli.py:128
+#: src/sigillum/cli.py:115 src/sigillum/cli.py:134
 msgid "Token PIN: "
 msgstr "PIN del token: "
 
-#: src/sigillum/cli.py:116
+#: src/sigillum/cli.py:122
 msgid "no PKCS#12 file configured in Settings"
 msgstr "nessun file PKCS#12 configurato nelle Impostazioni"
 
-#: src/sigillum/cli.py:126
+#: src/sigillum/cli.py:132
 msgid "PKCS#11 token not fully configured"
 msgstr "token PKCS#11 non completamente configurato"
 
-#: src/sigillum/cli.py:133
+#: src/sigillum/cli.py:139
 msgid ""
 "no credential configured. Pass --cert FILE or --lib LIB --cert-id ID, or "
 "configure the device via `sigillum config set`."
-msgstr "nessuna credenziale configurata. Passa --cert FILE oppure --lib LIB --cert-id ID, o configura il dispositivo via `sigillum config set`."
+msgstr ""
+"nessuna credenziale configurata. Passa --cert FILE oppure --lib LIB --cert-"
+"id ID, o configura il dispositivo via `sigillum config set`."
 
-#: src/sigillum/cli.py:148
+#: src/sigillum/cli.py:154
 msgid "TSA password: "
 msgstr "Password TSA: "
 
-#: src/sigillum/cli.py:168
+#: src/sigillum/cli.py:174
 #, python-brace-format
 msgid "unrecognized extension: {ext}"
 msgstr "estensione non riconosciuta: {ext}"
 
-#: src/sigillum/cli.py:185 src/sigillum/cli.py:382 src/sigillum/cli.py:419
-#: src/sigillum/cli.py:494
+#: src/sigillum/cli.py:191 src/sigillum/cli.py:388 src/sigillum/cli.py:425
+#: src/sigillum/cli.py:500
 #, python-brace-format
 msgid "file not found: {path}"
 msgstr "file non trovato: {path}"
 
-#: src/sigillum/cli.py:203
+#: src/sigillum/cli.py:209
 #, python-brace-format
 msgid "invalid level: {level}"
 msgstr "livello non valido: {level}"
 
-#: src/sigillum/cli.py:213
+#: src/sigillum/cli.py:219
 #, python-brace-format
 msgid ""
 "level {level} requires a TSA (--tsa URL or configure it via `sigillum config "
 "set`)"
-msgstr "livello {level} richiede una TSA (--tsa URL o configurala via `sigillum config set`)"
+msgstr ""
+"livello {level} richiede una TSA (--tsa URL o configurala via `sigillum "
+"config set`)"
 
-#: src/sigillum/cli.py:227
+#: src/sigillum/cli.py:233
 msgid "--box: use format x1,y1,x2,y2 in PDF points"
 msgstr "--box: usa formato x1,y1,x2,y2 in punti PDF"
 
-#: src/sigillum/cli.py:229
+#: src/sigillum/cli.py:235
 msgid "--box: needs exactly 4 values x1,y1,x2,y2"
 msgstr "--box: servono esattamente 4 valori x1,y1,x2,y2"
 
-#: src/sigillum/cli.py:255
+#: src/sigillum/cli.py:261
 #, python-brace-format
 msgid "signing failed: {ex}"
 msgstr "firma fallita: {ex}"
 
-#: src/sigillum/cli.py:314
+#: src/sigillum/cli.py:320
 msgid ".tsr verification requires --original FILE"
 msgstr "verifica .tsr richiede --original FILE"
 
-#: src/sigillum/cli.py:319
+#: src/sigillum/cli.py:325
 #, python-brace-format
 msgid "unhandled format: {fmt}"
 msgstr "formato non gestito: {fmt}"
 
-#: src/sigillum/cli.py:321 src/sigillum/core/verifier.py:374
+#: src/sigillum/cli.py:327 src/sigillum/core/verifier.py:374
 #, python-brace-format
 msgid "verification failed: {ex}"
 msgstr "verifica fallita: {ex}"
 
-#: src/sigillum/cli.py:338
+#: src/sigillum/cli.py:344
 #, python-brace-format
 msgid "File:    {value}"
 msgstr "File:    {value}"
 
-#: src/sigillum/cli.py:339
+#: src/sigillum/cli.py:345
 #, python-brace-format
 msgid "Format:  {value}"
 msgstr "Formato: {value}"
 
-#: src/sigillum/cli.py:344
+#: src/sigillum/cli.py:350
 msgid "  No signer found."
 msgstr "  Nessun firmatario trovato."
 
-#: src/sigillum/cli.py:348
+#: src/sigillum/cli.py:354
 #, python-brace-format
 msgid "Signer #{n}"
 msgstr "Firmatario #{n}"
 
-#: src/sigillum/cli.py:349
+#: src/sigillum/cli.py:355
 #, python-brace-format
 msgid "  Subject: {value}"
 msgstr "  Subject: {value}"
 
-#: src/sigillum/cli.py:350
+#: src/sigillum/cli.py:356
 #, python-brace-format
 msgid "  Issuer:  {value}"
 msgstr "  Issuer:  {value}"
 
-#: src/sigillum/cli.py:351
+#: src/sigillum/cli.py:357
 #, python-brace-format
 msgid "  Serial:  {value}"
 msgstr "  Serial:  {value}"
 
-#: src/sigillum/cli.py:352
+#: src/sigillum/cli.py:358
 #, python-brace-format
 msgid "  Hash:        {state}"
 msgstr "  Hash:        {state}"
 
-#: src/sigillum/cli.py:353 src/sigillum/cli.py:355 src/sigillum/gui/app.py:2270
-#: src/sigillum/gui/app.py:2271 src/sigillum/gui/signature_picker.py:78
+#: src/sigillum/cli.py:359 src/sigillum/cli.py:361 src/sigillum/gui/app.py:2584
+#: src/sigillum/gui/app.py:2585 src/sigillum/gui/signature_picker.py:78
 msgid "OK"
 msgstr "OK"
 
-#: src/sigillum/cli.py:353 src/sigillum/cli.py:355 src/sigillum/cli.py:368
+#: src/sigillum/cli.py:359 src/sigillum/cli.py:361 src/sigillum/cli.py:374
 msgid "INVALID"
 msgstr "NON valido"
 
-#: src/sigillum/cli.py:354
+#: src/sigillum/cli.py:360
 #, python-brace-format
 msgid "  Signature:   {state}"
 msgstr "  Firma:       {state}"
 
-#: src/sigillum/cli.py:356
+#: src/sigillum/cli.py:362
 #, python-brace-format
 msgid "  Chain:       {state}"
 msgstr "  Catena:      {state}"
 
-#: src/sigillum/cli.py:357 src/sigillum/cli.py:359 src/sigillum/gui/app.py:2272
+#: src/sigillum/cli.py:363 src/sigillum/cli.py:365 src/sigillum/gui/app.py:2586
 msgid "trusted"
 msgstr "fidata"
 
-#: src/sigillum/cli.py:357
+#: src/sigillum/cli.py:363
 msgid "UNTRUSTED"
 msgstr "NON fidata"
 
-#: src/sigillum/cli.py:359
+#: src/sigillum/cli.py:365
 msgid "not trusted"
 msgstr "non fidata"
 
-#: src/sigillum/cli.py:360
+#: src/sigillum/cli.py:366
 #, python-brace-format
 msgid "  Timestamp:   {ts} (TSA {state})"
 msgstr "  Marca temp.: {ts} (TSA {state})"
 
-#: src/sigillum/cli.py:363
+#: src/sigillum/cli.py:369
 #, python-brace-format
 msgid "    TSA: {value}"
 msgstr "    TSA: {value}"
 
-#: src/sigillum/cli.py:367
+#: src/sigillum/cli.py:373
 #, python-brace-format
 msgid "Overall: {state}"
 msgstr "Esito globale: {state}"
 
-#: src/sigillum/cli.py:368
+#: src/sigillum/cli.py:374
 msgid "VALID"
 msgstr "VALIDO"
 
-#: src/sigillum/cli.py:387
+#: src/sigillum/cli.py:393
 msgid ""
 "no TSA configured. Pass --tsa URL or save it via `sigillum config set --tsa "
 "URL`."
-msgstr "nessuna TSA configurata. Passa --tsa URL o salvala via `sigillum config set --tsa URL`."
+msgstr ""
+"nessuna TSA configurata. Passa --tsa URL o salvala via `sigillum config set "
+"--tsa URL`."
 
-#: src/sigillum/cli.py:401
+#: src/sigillum/cli.py:407
 #, python-brace-format
 msgid "timestamping failed: {ex}"
 msgstr "marca temporale fallita: {ex}"
 
-#: src/sigillum/cli.py:425 src/sigillum/core/crypto.py:111
+#: src/sigillum/cli.py:431 src/sigillum/core/crypto.py:111
 msgid "unsupported algorithm: {algo!r}. Valid: {valid}"
 msgstr "algoritmo non supportato: {algo!r}. Validi: {valid}"
 
-#: src/sigillum/cli.py:430 src/sigillum/cli.py:509
+#: src/sigillum/cli.py:436 src/sigillum/cli.py:515
 msgid "Password: "
 msgstr "Password: "
 
-#: src/sigillum/cli.py:439
+#: src/sigillum/cli.py:445
 #, python-brace-format
 msgid "encryption failed: {ex}"
 msgstr "cifratura fallita: {ex}"
 
-#: src/sigillum/cli.py:455
+#: src/sigillum/cli.py:461
 #, python-brace-format
 msgid "Password for {name} (empty if PEM): "
 msgstr "Password per {name} (vuoto se PEM): "
 
-#: src/sigillum/cli.py:462
+#: src/sigillum/cli.py:468
 #, python-brace-format
 msgid "could not open recipient certificate: {ex}"
 msgstr "impossibile aprire il certificato destinatario: {ex}"
 
-#: src/sigillum/cli.py:477
+#: src/sigillum/cli.py:483
 #, python-brace-format
 msgid "asymmetric encryption failed: {ex}"
 msgstr "cifratura asimmetrica fallita: {ex}"
 
-#: src/sigillum/cli.py:515
+#: src/sigillum/cli.py:521
 #, python-brace-format
 msgid "decryption failed: {ex}"
 msgstr "decifratura fallita: {ex}"
 
-#: src/sigillum/cli.py:525
+#: src/sigillum/cli.py:531
 #, python-brace-format
 msgid "asymmetric decryption failed: {ex}"
 msgstr "decifratura asimmetrica fallita: {ex}"
 
-#: src/sigillum/cli.py:528
+#: src/sigillum/cli.py:534
 msgid "unrecognized format (neither SIGILLUM nor CMS EnvelopedData)"
 msgstr "formato non riconosciuto (né SIGILLUM né CMS EnvelopedData)"
 
-#: src/sigillum/cli.py:548
+#: src/sigillum/cli.py:552 src/sigillum/cli.py:802
+#, python-brace-format
+msgid "Unknown country code: {cc}"
+msgstr "Codice paese sconosciuto: {cc}"
+
+#: src/sigillum/cli.py:557
 #, python-brace-format
 msgid "TSL import failed: {ex}"
 msgstr "import TSL fallito: {ex}"
 
-#: src/sigillum/cli.py:554
+#: src/sigillum/cli.py:568
+#, python-brace-format
+msgid "Country:     {cc}"
+msgstr "Paese:        {cc}"
+
+#: src/sigillum/cli.py:569
 #, python-brace-format
 msgid "Signing CAs: {n} → {path}"
 msgstr "CAs firma:     {n} → {path}"
 
-#: src/sigillum/cli.py:555
+#: src/sigillum/cli.py:570
 #, python-brace-format
 msgid "TSA CAs:     {n} → {path}"
 msgstr "CAs TSA:       {n} → {path}"
 
-#: src/sigillum/cli.py:556
+#: src/sigillum/cli.py:571
 #, python-brace-format
 msgid "Last import: {when}"
 msgstr "Ultimo import: {when}"
 
-#: src/sigillum/cli.py:608
+#: src/sigillum/cli.py:573
+msgid "Signature:   verified (LOTL-anchored)"
+msgstr "Firma:        verificata (ancorata a LOTL)"
+
+#: src/sigillum/cli.py:576
+#, python-brace-format
+msgid "Signature:   verified — signer: {subj}"
+msgstr "Firma:        verificata — firmatario: {subj}"
+
+#: src/sigillum/cli.py:588
+msgid "No TSL imported. Run: sigillum tsl-import"
+msgstr "Nessuna TSL importata. Esegui: sigillum tsl-import"
+
+#: src/sigillum/cli.py:599
+msgid "primary"
+msgstr "primario"
+
+#: src/sigillum/cli.py:601
+#
+msgid "active"
+msgstr "attivo"
+
+#: src/sigillum/cli.py:604
+#
+msgid "(no timestamp)"
+msgstr "(nessun timestamp)"
+
+#: src/sigillum/cli.py:606
+#, python-brace-format
+msgid "  {cc}: imported {days} days ago ({ts}){suffix}"
+msgstr "  {cc}: importata {days} giorni fa ({ts}){suffix}"
+
+#: src/sigillum/cli.py:660
 msgid "PKCS#11 drivers available on the system:"
 msgstr "Driver PKCS#11 disponibili sul sistema:"
 
-#: src/sigillum/cli.py:613 src/sigillum/cli.py:627
+#: src/sigillum/cli.py:665 src/sigillum/cli.py:679
 msgid "  (none)"
 msgstr "  (nessuno)"
 
-#: src/sigillum/cli.py:616
+#: src/sigillum/cli.py:668
 msgid "Detected USB devices:"
 msgstr "Dispositivi USB rilevati:"
 
-#: src/sigillum/cli.py:620
+#: src/sigillum/cli.py:672
 #, python-brace-format
 msgid "    driver: {hint} [{kind}]"
 msgstr "    driver: {hint} [{kind}]"
 
-#: src/sigillum/cli.py:622
+#: src/sigillum/cli.py:674
 msgid "  (none recognized)"
 msgstr "  (nessuno riconosciuto)"
 
-#: src/sigillum/cli.py:625
+#: src/sigillum/cli.py:677
 msgid "Tokens with visible certificates:"
 msgstr "Token con certificati visibili:"
 
-#: src/sigillum/cli.py:630
+#: src/sigillum/cli.py:682
 msgid "Driver suggestions:"
 msgstr "Suggerimenti driver:"
 
-#: src/sigillum/cli.py:635
+#: src/sigillum/cli.py:687
 #, python-brace-format
 msgid "    install: {cmd}"
 msgstr "    installa: {cmd}"
 
-#: src/sigillum/cli.py:643
+#: src/sigillum/cli.py:695
 #, python-brace-format
 msgid "      id={id}  serial={serial}  expires={exp}"
 msgstr "      id={id}  serial={serial}  scade={exp}"
 
-#: src/sigillum/cli.py:677
+#: src/sigillum/cli.py:738
 #, python-brace-format
 msgid "File:            {path}"
 msgstr "File:           {path}"
 
-#: src/sigillum/cli.py:678
+#: src/sigillum/cli.py:739
 #, python-brace-format
 msgid "Device:          {value}"
 msgstr "Dispositivo:    {value}"
 
-#: src/sigillum/cli.py:680
+#: src/sigillum/cli.py:741
 msgid " (auth)"
 msgstr " (auth)"
 
-#: src/sigillum/cli.py:681
+#: src/sigillum/cli.py:742
 #, python-brace-format
 msgid "TSA:             {url}{auth}"
 msgstr "TSA:            {url}{auth}"
 
-#: src/sigillum/cli.py:683
+#: src/sigillum/cli.py:744
 msgid "TSA:             (not set)"
 msgstr "TSA:            (non impostata)"
 
-#: src/sigillum/cli.py:684
+#: src/sigillum/cli.py:745
 #, python-brace-format
 msgid "Visible signature: pos={pos}, logo={logo}"
 msgstr "Firma visibile: pos={pos}, logo={logo}"
 
-#: src/sigillum/cli.py:686
+#: src/sigillum/cli.py:747
 msgid "(none)"
 msgstr "(nessuno)"
 
-#: src/sigillum/cli.py:690
+#: src/sigillum/cli.py:749
 #, python-brace-format
-msgid "AgID TSL:        {when} ({age} days)"
-msgstr "TSL AgID:       {when} ({age} giorni)"
+msgid "Primary country: {cc}"
+msgstr "Paese primario:  {cc}"
 
-#: src/sigillum/cli.py:693
-msgid "AgID TSL:        never imported"
-msgstr "TSL AgID:       mai importata"
+#: src/sigillum/cli.py:750
+#, python-brace-format
+msgid "Active for verify: {cc}"
+msgstr "Attivi per verifica: {cc}"
 
-#: src/sigillum/cli.py:730
+#: src/sigillum/cli.py:755
+#, python-brace-format
+msgid "{n} days"
+msgstr "{n} giorni"
+
+#: src/sigillum/cli.py:755
+msgid "?"
+msgstr "?"
+
+#: src/sigillum/cli.py:756
+#, python-brace-format
+msgid "  TSL {cc}:        {when} ({age})"
+msgstr "  TSL {cc}:        {when} ({age})"
+
+#: src/sigillum/cli.py:759
+#
+msgid "TSL:             never imported"
+msgstr "TSL:             mai importata"
+
+#: src/sigillum/cli.py:813
+#, python-brace-format
+msgid "Unknown country code(s): {bad}"
+msgstr "Codice/i paese sconosciuto/i: {bad}"
+
+#: src/sigillum/cli.py:818
 msgid "no option to modify passed to `config set`"
 msgstr "nessuna opzione da modificare passata a `config set`"
 
-#: src/sigillum/cli.py:732
+#: src/sigillum/cli.py:820
 #, python-brace-format
 msgid "settings updated: {path}"
 msgstr "impostazioni aggiornate: {path}"
 
-#: src/sigillum/cli.py:750
+#: src/sigillum/cli.py:838
 msgid "PKCS#12 (.p12/.pfx) or PEM file to use"
 msgstr "file PKCS#12 (.p12/.pfx) o PEM da usare"
 
-#: src/sigillum/cli.py:751
+#: src/sigillum/cli.py:839
 msgid "path to the token's PKCS#11 (.so) module"
 msgstr "path al modulo PKCS#11 (.so) del token"
 
-#: src/sigillum/cli.py:753
+#: src/sigillum/cli.py:841
 msgid "composite id of the certificate on the token (see `sigillum detect`)"
 msgstr "ID composto del certificato sul token (vedi `sigillum detect`)"
 
-#: src/sigillum/cli.py:757
+#: src/sigillum/cli.py:845
 msgid "TSA URL (overrides settings)"
 msgstr "URL della TSA (sovrascrive le impostazioni)"
 
-#: src/sigillum/cli.py:758
+#: src/sigillum/cli.py:846
 msgid "HTTP Basic username for the TSA"
 msgstr "username HTTP Basic per la TSA"
 
-#: src/sigillum/cli.py:760
+#: src/sigillum/cli.py:848
 msgid "HTTP Basic password for the TSA (alt: $SIGILLUM_TSA_PASSWORD)"
 msgstr "password HTTP Basic per la TSA (alt: $SIGILLUM_TSA_PASSWORD)"
 
-#: src/sigillum/cli.py:766
+#: src/sigillum/cli.py:854
 msgid "Sign, verify, timestamp and encrypt documents."
 msgstr "Firma, verifica, marca temporale, cifratura di documenti."
 
-#: src/sigillum/cli.py:769
+#: src/sigillum/cli.py:857
 msgid "command"
 msgstr "comando"
 
-#: src/sigillum/cli.py:773
+#: src/sigillum/cli.py:861
 msgid "sign a PDF/XML/file (PAdES/XAdES/CAdES)"
 msgstr "firma un PDF/XML/file (PAdES/XAdES/CAdES)"
 
-#: src/sigillum/cli.py:774
+#: src/sigillum/cli.py:862
 msgid "Sign the input file. The format is derived from the extension."
 msgstr "Firma il file di input. Il formato è dedotto dall'estensione."
 
-#: src/sigillum/cli.py:776
+#: src/sigillum/cli.py:864
 msgid "file to sign"
 msgstr "file da firmare"
 
-#: src/sigillum/cli.py:777
+#: src/sigillum/cli.py:865
 msgid "output file (default: derived from input)"
 msgstr "file di output (default: derivato dall'input)"
 
-#: src/sigillum/cli.py:779
+#: src/sigillum/cli.py:867
 msgid "signature level (default: B)"
 msgstr "livello firma (default: B)"
 
-#: src/sigillum/cli.py:781
+#: src/sigillum/cli.py:869
 msgid "PAdES: add a graphical appearance"
 msgstr "PAdES: aggiungi appearance grafico"
 
-#: src/sigillum/cli.py:783
+#: src/sigillum/cli.py:871
 msgid "page for the visible signature (0=first, -1=last)"
 msgstr "pagina su cui apporre la firma visibile (0=prima, -1=ultima)"
 
-#: src/sigillum/cli.py:786 src/sigillum/cli.py:882
+#: src/sigillum/cli.py:874 src/sigillum/cli.py:984
 msgid "corner preset for the visible signature"
 msgstr "preset angolo firma visibile"
 
-#: src/sigillum/cli.py:787
+#: src/sigillum/cli.py:875
 msgid "explicit rectangle in PDF points: x1,y1,x2,y2"
 msgstr "rettangolo esplicito in punti PDF: x1,y1,x2,y2"
 
-#: src/sigillum/cli.py:788
+#: src/sigillum/cli.py:876
 msgid "PNG/JPG logo for the visible signature"
 msgstr "logo PNG/JPG per la firma visibile"
 
-#: src/sigillum/cli.py:789
+#: src/sigillum/cli.py:877
 msgid "reason for the signature (PAdES)"
 msgstr "motivo della firma (PAdES)"
 
-#: src/sigillum/cli.py:790
+#: src/sigillum/cli.py:878
 msgid "location of the signing (PAdES)"
 msgstr "luogo della firma (PAdES)"
 
-#: src/sigillum/cli.py:791
+#: src/sigillum/cli.py:879
 msgid "signer's contact (PAdES)"
 msgstr "contatto del firmatario (PAdES)"
 
-#: src/sigillum/cli.py:798
+#: src/sigillum/cli.py:886
 msgid "verify a signature or a timestamp"
 msgstr "verifica una firma o una marca temporale"
 
-#: src/sigillum/cli.py:799
+#: src/sigillum/cli.py:887
 msgid "Verify a .pdf, .p7m, .xml, .tsr or .tsd file."
 msgstr "Verifica un .pdf, .p7m, .xml, .tsr o .tsd."
 
-#: src/sigillum/cli.py:801
+#: src/sigillum/cli.py:889
 msgid "signed/timestamped file"
 msgstr "file firmato/marcato"
 
-#: src/sigillum/cli.py:803
+#: src/sigillum/cli.py:891
 msgid "original file (required for .tsr and detached CAdES)"
 msgstr "file originale (richiesto per .tsr e per CAdES detached)"
 
-#: src/sigillum/cli.py:805
+#: src/sigillum/cli.py:893
 msgid "PEM with extra CAs for the signer chain (repeatable)"
 msgstr "PEM con CA aggiuntive per la catena del firmatario (ripetibile)"
 
-#: src/sigillum/cli.py:807
+#: src/sigillum/cli.py:895
 msgid "PEM with extra CAs for the TSA chain (repeatable)"
 msgstr "PEM con CA aggiuntive per la catena della TSA (ripetibile)"
 
-#: src/sigillum/cli.py:808
+#: src/sigillum/cli.py:896
 msgid "machine-readable JSON output"
 msgstr "output JSON machine-readable"
 
-#: src/sigillum/cli.py:813
+#: src/sigillum/cli.py:901
 msgid "standalone timestamp (TSR / TSD)"
 msgstr "marca temporale standalone (TSR / TSD)"
 
-#: src/sigillum/cli.py:814
+#: src/sigillum/cli.py:902
 msgid "Timestamp any file via RFC 3161."
 msgstr "Marca temporalmente un file qualunque via RFC 3161."
 
-#: src/sigillum/cli.py:816
+#: src/sigillum/cli.py:904
 msgid "file to timestamp"
 msgstr "file da marcare temporalmente"
 
-#: src/sigillum/cli.py:817
+#: src/sigillum/cli.py:905
 msgid "output file (default: <input>.tsr/.tsd)"
 msgstr "file di output (default: <input>.tsr/.tsd)"
 
-#: src/sigillum/cli.py:819
+#: src/sigillum/cli.py:907
 msgid "output format (default: tsd)"
 msgstr "formato output (default: tsd)"
 
-#: src/sigillum/cli.py:825
+#: src/sigillum/cli.py:913
 msgid "encrypt a file (symmetric or asymmetric)"
 msgstr "cifra un file (simmetrica o asimmetrica)"
 
-#: src/sigillum/cli.py:826
+#: src/sigillum/cli.py:914
 msgid "Encrypt the input file. Default: symmetric AES-256 with password."
 msgstr "Cifra il file di input. Default: simmetrica AES-256 con password."
 
-#: src/sigillum/cli.py:828
+#: src/sigillum/cli.py:916
 msgid "plaintext file"
 msgstr "file in chiaro"
 
-#: src/sigillum/cli.py:829
+#: src/sigillum/cli.py:917
 msgid "output encrypted file"
 msgstr "file cifrato di output"
 
-#: src/sigillum/cli.py:831
+#: src/sigillum/cli.py:919
 msgid "symmetric (password) or asymmetric (certificate)"
 msgstr "simmetrica (password) o asimmetrica (certificato)"
 
-#: src/sigillum/cli.py:834
+#: src/sigillum/cli.py:922
 msgid "symmetric algorithm (default: AES-256)"
 msgstr "algoritmo simmetrico (default: AES-256)"
 
-#: src/sigillum/cli.py:836
+#: src/sigillum/cli.py:924
 msgid ""
 "recipient certificate (.p12/.pem file); if omitted, encrypts to the "
 "configured cert"
-msgstr "cert del destinatario (file .p12/.pem); se omesso si cifra al cert configurato"
+msgstr ""
+"cert del destinatario (file .p12/.pem); se omesso si cifra al cert "
+"configurato"
 
-#: src/sigillum/cli.py:843
+#: src/sigillum/cli.py:931
 msgid "decrypt a file (format auto-detected)"
 msgstr "decifra un file (formato auto-rilevato)"
 
-#: src/sigillum/cli.py:844
+#: src/sigillum/cli.py:932
 msgid "Decrypt a .enc (symmetric) or .p7e (CMS EnvelopedData) file."
 msgstr "Decifra un .enc (simmetrico) o .p7e (CMS EnvelopedData)."
 
-#: src/sigillum/cli.py:846
+#: src/sigillum/cli.py:934
 msgid "encrypted file"
 msgstr "file cifrato"
 
-#: src/sigillum/cli.py:847
+#: src/sigillum/cli.py:935
 msgid "output plaintext file"
 msgstr "file in chiaro di output"
 
-#: src/sigillum/cli.py:853
-msgid "download the AgID Trust List into local bundles"
-msgstr "scarica la Trust List AgID nei bundle locali"
+#: src/sigillum/cli.py:942
+#
+msgid "download a national Trust List into local bundles via EU LOTL"
+msgstr "scarica una Trust List nazionale nei bundle locali via EU LOTL"
 
-#: src/sigillum/cli.py:859
+#: src/sigillum/cli.py:948
+msgid ""
+"ISO country code (e.g. IT, DE, FR). Defaults to the primary country derived "
+"from settings or $LANG."
+msgstr "codice ISO del paese (es. IT, DE, FR). Default: paese primario da settings o $LANG."
+
+#: src/sigillum/cli.py:955
+msgid "list every imported national Trust List with its age"
+msgstr "elenca ogni Trust List nazionale importata con la sua età"
+
+#: src/sigillum/cli.py:961
 msgid "detect PKCS#11 drivers, USB tokens and certificates"
 msgstr "rileva driver PKCS#11, token USB e certificati"
 
-#: src/sigillum/cli.py:861 src/sigillum/cli.py:870
+#: src/sigillum/cli.py:963 src/sigillum/cli.py:972
 msgid "JSON output"
 msgstr "output JSON"
 
-#: src/sigillum/cli.py:866
+#: src/sigillum/cli.py:968
 msgid "show or modify persistent settings"
 msgstr "mostra o modifica le impostazioni persistenti"
 
-#: src/sigillum/cli.py:868
+#: src/sigillum/cli.py:970
 msgid "action"
 msgstr "azione"
 
-#: src/sigillum/cli.py:869
+#: src/sigillum/cli.py:971
 msgid "print the current configuration"
 msgstr "stampa la configurazione corrente"
 
-#: src/sigillum/cli.py:871
+#: src/sigillum/cli.py:973
 msgid "modify a value"
 msgstr "modifica un valore"
 
-#: src/sigillum/cli.py:872
+#: src/sigillum/cli.py:974
 msgid "use this PKCS#12 file as the device"
 msgstr "usa questo file PKCS#12 come dispositivo"
 
-#: src/sigillum/cli.py:873
+#: src/sigillum/cli.py:975
 msgid "path to the token's PKCS#11 module"
 msgstr "path al modulo PKCS#11 del token"
 
-#: src/sigillum/cli.py:875
+#: src/sigillum/cli.py:977
 msgid "composite id of the certificate on the token"
 msgstr "ID composto del certificato sul token"
 
-#: src/sigillum/cli.py:876
+#: src/sigillum/cli.py:978
 msgid "TSA URL"
 msgstr "URL della TSA"
 
-#: src/sigillum/cli.py:877
+#: src/sigillum/cli.py:979
 msgid "TSA username"
 msgstr "username TSA"
 
-#: src/sigillum/cli.py:878
+#: src/sigillum/cli.py:980
 msgid "TSA password"
 msgstr "password TSA"
 
-#: src/sigillum/cli.py:879
+#: src/sigillum/cli.py:981
 msgid "logo for the visible signature"
 msgstr "logo per la firma visibile"
 
-#: src/sigillum/cli.py:886
+#: src/sigillum/cli.py:986
+msgid ""
+"primary eIDAS country (e.g. IT, DE). Empty string clears it (fall back to "
+"$LANG)."
+msgstr "paese eIDAS primario (es. IT, DE). Stringa vuota lo rimuove (fallback a $LANG)."
+
+#: src/sigillum/cli.py:989
+msgid ""
+"comma-separated list of country codes to include in the verification trust "
+"store. Empty string falls back to the primary country."
+msgstr "elenco di codici paese separati da virgola da includere nel trust store di verifica. Stringa vuota torna al paese primario."
+
+#: src/sigillum/cli.py:995
 msgid "launch the graphical interface"
 msgstr "avvia l'interfaccia grafica"
 
-#: src/sigillum/cli.py:888
+#: src/sigillum/cli.py:997
 msgid "arguments passed to GtkApplication"
 msgstr "argomenti passati a GtkApplication"
 
-#: src/sigillum/cli.py:903
+#: src/sigillum/cli.py:1012
 msgid ""
 "\n"
 "interrupted."
@@ -694,7 +792,9 @@ msgstr "non è un file EnvelopedData (content_type={ct!r})"
 msgid ""
 "the file is not encrypted for the configured certificate (no matching "
 "recipient)"
-msgstr "il file non è cifrato per il certificato configurato (nessun destinatario corrisponde)"
+msgstr ""
+"il file non è cifrato per il certificato configurato (nessun destinatario "
+"corrisponde)"
 
 #: src/sigillum/core/crypto.py:286
 msgid "credential has no usable private key"
@@ -750,25 +850,25 @@ msgstr "oggetto {num} {gen} R non trovato nel PDF"
 msgid "catalog without closing >>"
 msgstr "catalogo senza chiusura >>"
 
-#: src/sigillum/core/settings.py:56
+#: src/sigillum/core/settings.py:102
 #, python-brace-format
 msgid "File: {path}"
 msgstr "File: {path}"
 
-#: src/sigillum/core/settings.py:57
+#: src/sigillum/core/settings.py:103
 msgid "File (not set)"
 msgstr "File (non impostato)"
 
-#: src/sigillum/core/settings.py:59
+#: src/sigillum/core/settings.py:105
 msgid "(no cert chosen)"
 msgstr "(cert non scelto)"
 
-#: src/sigillum/core/settings.py:60
+#: src/sigillum/core/settings.py:106
 #, python-brace-format
 msgid "PKCS#11 token: {label}"
 msgstr "Token PKCS#11: {label}"
 
-#: src/sigillum/core/settings.py:61
+#: src/sigillum/core/settings.py:107
 msgid "No device configured"
 msgstr "Nessun dispositivo configurato"
 
@@ -782,7 +882,7 @@ msgstr "livello {level} richiede un URL TSA"
 msgid "image file not found: {path}"
 msgstr "file immagine non trovato: {path}"
 
-#: src/sigillum/core/signer.py:147 src/sigillum/gui/app.py:507
+#: src/sigillum/core/signer.py:147 src/sigillum/gui/app.py:599
 msgid "Digitally signed by:"
 msgstr "Firmato digitalmente da:"
 
@@ -963,278 +1063,338 @@ msgstr "In alto a destra"
 msgid "Top left"
 msgstr "In alto a sinistra"
 
-#: src/sigillum/gui/app.py:98
+#: src/sigillum/gui/app.py:119
 msgid "FreeTSA — free, non-qualified"
 msgstr "FreeTSA — gratuita, non qualificata"
 
-#: src/sigillum/gui/app.py:100
+#: src/sigillum/gui/app.py:121
 msgid "Aruba PEC — IT qualified (contract required)"
 msgstr "Aruba PEC — qualificata IT (contratto richiesto)"
 
-#: src/sigillum/gui/app.py:102
+#: src/sigillum/gui/app.py:123
 msgid "InfoCert — IT qualified (contract required)"
 msgstr "InfoCert — qualificata IT (contratto richiesto)"
 
-#: src/sigillum/gui/app.py:104
+#: src/sigillum/gui/app.py:125
 msgid "Namirial — IT qualified (contract required)"
 msgstr "Namirial — qualificata IT (contratto richiesto)"
 
-#: src/sigillum/gui/app.py:106
+#: src/sigillum/gui/app.py:127
 msgid "DigiCert — free, non-qualified"
 msgstr "DigiCert — gratuita, non qualificata"
 
-#: src/sigillum/gui/app.py:190
+#: src/sigillum/gui/app.py:211
 msgid "Error"
 msgstr "Errore"
 
-#: src/sigillum/gui/app.py:210
+#: src/sigillum/gui/app.py:231
 msgid "Signing device"
 msgstr "Dispositivo di firma"
 
-#: src/sigillum/gui/app.py:212 src/sigillum/gui/app.py:1450
-#: src/sigillum/gui/app.py:2256 src/sigillum/gui/app.py:2323
+#: src/sigillum/gui/app.py:233 src/sigillum/gui/app.py:1755
+#: src/sigillum/gui/app.py:2570 src/sigillum/gui/app.py:2637
 msgid "Timestamp"
 msgstr "Marca temporale"
 
-#: src/sigillum/gui/app.py:214
+#: src/sigillum/gui/app.py:235
 msgid "Visible signature"
 msgstr "Firma Visibile"
 
-#: src/sigillum/gui/app.py:216
+#: src/sigillum/gui/app.py:237
 msgid "AgID Trust List"
 msgstr "Lista di fiducia AgID"
 
-#: src/sigillum/gui/app.py:218
+#: src/sigillum/gui/app.py:239
 msgid "About"
 msgstr "About"
 
-#: src/sigillum/gui/app.py:227
+#: src/sigillum/gui/app.py:248
 msgid "Save"
 msgstr "Salva"
 
-#: src/sigillum/gui/app.py:250
+#: src/sigillum/gui/app.py:271
 msgid "Source:"
 msgstr "Sorgente:"
 
-#: src/sigillum/gui/app.py:253
+#: src/sigillum/gui/app.py:274
 msgid "PKCS#11 token"
 msgstr "Token PKCS#11"
 
-#: src/sigillum/gui/app.py:276
+#: src/sigillum/gui/app.py:297
 msgid ""
 "URL of the RFC 3161 service for level T. Enabled or disabled at signing time."
-msgstr "URL del servizio RFC 3161 per il livello T. Si attiva o disattiva al momento della firma."
+msgstr ""
+"URL del servizio RFC 3161 per il livello T. Si attiva o disattiva al momento "
+"della firma."
 
-#: src/sigillum/gui/app.py:284
+#: src/sigillum/gui/app.py:305
 msgid "Preset:"
 msgstr "Preset:"
 
-#: src/sigillum/gui/app.py:286
+#: src/sigillum/gui/app.py:307
 msgid "(custom)"
 msgstr "(personalizzato)"
 
-#: src/sigillum/gui/app.py:295
+#: src/sigillum/gui/app.py:316
 msgid "URL:"
 msgstr "URL:"
 
-#: src/sigillum/gui/app.py:308
+#: src/sigillum/gui/app.py:329
 msgid "HTTP Basic credentials (required by qualified IT TSAs)"
 msgstr "Credenziali HTTP Basic (richieste dalle TSA qualificate IT)"
 
-#: src/sigillum/gui/app.py:314
+#: src/sigillum/gui/app.py:335
 msgid "Username:"
 msgstr "Username:"
 
-#: src/sigillum/gui/app.py:320 src/sigillum/gui/app.py:1016
-#: src/sigillum/gui/app.py:1137 src/sigillum/gui/app.py:1795
+#: src/sigillum/gui/app.py:341 src/sigillum/gui/app.py:1311
+#: src/sigillum/gui/app.py:1432 src/sigillum/gui/app.py:2100
 msgid "Password:"
 msgstr "Password:"
 
-#: src/sigillum/gui/app.py:331
-#, python-brace-format
-msgid "Download the Italian qualified CA certificates from {url}"
-msgstr "Scarica i certificati delle CA italiane qualificate da {url}"
+#: src/sigillum/gui/app.py:354
+msgid ""
+"Download national Trust Lists from the EU LOTL. The primary country is auto-"
+"imported at startup; additional countries can be enabled for verification."
+msgstr "Scarica le Trust List nazionali dalla EU LOTL. Il paese primario viene importato all'avvio; altri paesi possono essere abilitati per la verifica."
 
-#: src/sigillum/gui/app.py:337
-msgid "Import from AgID TSL"
-msgstr "Importa da TSL AgID"
+#: src/sigillum/gui/app.py:365
+msgid "Primary country:"
+msgstr "Paese primario:"
 
-#: src/sigillum/gui/app.py:355
+#: src/sigillum/gui/app.py:383
+msgid "Imported national TSLs:"
+msgstr "TSL nazionali importate:"
+
+#: src/sigillum/gui/app.py:391
+msgid "+ Add EU country"
+msgstr "+ Aggiungi paese UE"
+
+#: src/sigillum/gui/app.py:397
+msgid "Refresh primary country"
+msgstr "Aggiorna paese primario"
+
+#: src/sigillum/gui/app.py:421
 #, python-brace-format
 msgid "<small>version {v}</small>"
 msgstr "<small>versione {v}</small>"
 
-#: src/sigillum/gui/app.py:360
+#: src/sigillum/gui/app.py:426
 msgid ""
 "Tool for digital signature (PAdES, CAdES, XAdES) with support for PKCS#11 "
 "hardware tokens and RFC 3161 timestamping. Designed for the Italian eIDAS/"
 "AgID context."
-msgstr "Strumento per la firma digitale (PAdES, CAdES, XAdES) con supporto a token hardware PKCS#11 e marca temporale RFC 3161. Pensato per il contesto eIDAS/AgID italiano."
+msgstr ""
+"Strumento per la firma digitale (PAdES, CAdES, XAdES) con supporto a token "
+"hardware PKCS#11 e marca temporale RFC 3161. Pensato per il contesto eIDAS/"
+"AgID italiano."
 
-#: src/sigillum/gui/app.py:369
+#: src/sigillum/gui/app.py:435
 msgid "Report a bug:"
 msgstr "Segnala un bug:"
 
-#: src/sigillum/gui/app.py:373
+#: src/sigillum/gui/app.py:439
 msgid "Open an issue on GitHub"
 msgstr "Apri una issue su GitHub"
 
-#: src/sigillum/gui/app.py:380
+#: src/sigillum/gui/app.py:445
+#
+msgid "<b>Credits</b>"
+msgstr "<b>Crediti</b>"
+
+#: src/sigillum/gui/app.py:453
+msgid "Author"
+msgstr "Autore"
+
+#: src/sigillum/gui/app.py:454
+msgid "PAdES/CAdES"
+msgstr "PAdES/CAdES"
+
+#: src/sigillum/gui/app.py:455
+#
+msgid "Crypto"
+msgstr "Crypto"
+
+#: src/sigillum/gui/app.py:456
+#
+msgid "PKCS#11"
+msgstr "PKCS#11"
+
+#: src/sigillum/gui/app.py:457
+msgid "UI toolkit"
+msgstr "Toolkit UI"
+
+#: src/sigillum/gui/app.py:472
 msgid ""
 "<small>License: GPL-3.0-or-later · Sources: <a href='https://github.com/"
 "piuma/sigillum'>github.com/piuma/sigillum</a></small>"
-msgstr "<small>Licenza: GPL-3.0-or-later · Sorgenti: <a href='https://github.com/piuma/sigillum'>github.com/piuma/sigillum</a></small>"
+msgstr ""
+"<small>Licenza: GPL-3.0-or-later · Sorgenti: <a href='https://github.com/"
+"piuma/sigillum'>github.com/piuma/sigillum</a></small>"
 
-#: src/sigillum/gui/app.py:392
+#: src/sigillum/gui/app.py:484
 msgid ""
 "Logo for the visible signature on PDFs (PAdES). The box position is chosen "
 "in the Sign tab each time you sign."
-msgstr "Logo per la firma visibile nei PDF (PAdES). La posizione del riquadro si sceglie nel tab Firma ogni volta che firmi."
+msgstr ""
+"Logo per la firma visibile nei PDF (PAdES). La posizione del riquadro si "
+"sceglie nel tab Firma ogni volta che firmi."
 
-#: src/sigillum/gui/app.py:401
+#: src/sigillum/gui/app.py:493
 msgid "Logo (PNG/JPG, optional):"
 msgstr "Logo (PNG/JPG, opzionale):"
 
-#: src/sigillum/gui/app.py:405
+#: src/sigillum/gui/app.py:497
 msgid "Images"
 msgstr "Immagini"
 
-#: src/sigillum/gui/app.py:413
+#: src/sigillum/gui/app.py:505
 msgid "Remove the image"
 msgstr "Rimuovi l'immagine"
 
-#: src/sigillum/gui/app.py:428
+#: src/sigillum/gui/app.py:520
 msgid "Signature box preview:"
 msgstr "Anteprima riquadro firma:"
 
-#: src/sigillum/gui/app.py:504
+#: src/sigillum/gui/app.py:596
 msgid "Name Surname"
 msgstr "Nome Cognome"
 
-#: src/sigillum/gui/app.py:539
+#: src/sigillum/gui/app.py:631
 msgid "Certificate (.p12 / .pfx / .pem):"
 msgstr "Certificato (.p12 / .pfx / .pem):"
 
-#: src/sigillum/gui/app.py:544
+#: src/sigillum/gui/app.py:636
 msgid "Certificates"
 msgstr "Certificati"
 
-#: src/sigillum/gui/app.py:558
+#: src/sigillum/gui/app.py:650
 msgid "🔍  Auto-detect token"
 msgstr "🔍  Rileva automaticamente token"
 
-#: src/sigillum/gui/app.py:568
+#: src/sigillum/gui/app.py:660
 msgid "PKCS#11 driver:"
 msgstr "Driver PKCS#11:"
 
-#: src/sigillum/gui/app.py:575
+#: src/sigillum/gui/app.py:667
 msgid "Re-read certificates from the token"
 msgstr "Rileggi i certificati dal token"
 
-#: src/sigillum/gui/app.py:580
+#: src/sigillum/gui/app.py:672
 msgid "Certificate on the token:"
 msgstr "Certificato sul token:"
 
-#: src/sigillum/gui/app.py:605 src/sigillum/gui/app.py:953
+#: src/sigillum/gui/app.py:697 src/sigillum/gui/app.py:1251
 msgid "Provide the PKCS#11 driver path."
 msgstr "Indica il path del driver PKCS#11."
 
-#: src/sigillum/gui/app.py:610
+#: src/sigillum/gui/app.py:702
 #, python-brace-format
 msgid "Reading the token failed: {ex}"
 msgstr "Lettura del token fallita: {ex}"
 
-#: src/sigillum/gui/app.py:613
+#: src/sigillum/gui/app.py:705
 msgid "(no certificate)"
 msgstr "(nessun certificato)"
 
-#: src/sigillum/gui/app.py:628
+#: src/sigillum/gui/app.py:720
 msgid "<i>Scanning…</i>"
 msgstr "<i>Scansione in corso…</i>"
 
-#: src/sigillum/gui/app.py:635
+#: src/sigillum/gui/app.py:727
 #, python-brace-format
 msgid "Scan failed: {ex}"
 msgstr "Scansione fallita: {ex}"
 
-#: src/sigillum/gui/app.py:646
+#: src/sigillum/gui/app.py:738
 msgid "<span foreground='#c33'>Missing driver for the detected token.</span>"
 msgstr "<span foreground='#c33'>Driver mancante per il token rilevato.</span>"
 
-#: src/sigillum/gui/app.py:651
+#: src/sigillum/gui/app.py:743
 #, python-brace-format
 msgid ""
 "<span foreground='#c33'>No token detected.</span> <small>Drivers tried: {n}. "
 "Enter the path manually if your token's driver isn't among the known ones.</"
 "small>"
-msgstr "<span foreground='#c33'>Nessun token rilevato.</span> <small>Driver provati: {n}. Inserisci il path manualmente se il driver del tuo token non è tra quelli noti.</small>"
+msgstr ""
+"<span foreground='#c33'>Nessun token rilevato.</span> <small>Driver provati: "
+"{n}. Inserisci il path manualmente se il driver del tuo token non è tra "
+"quelli noti.</small>"
 
-#: src/sigillum/gui/app.py:678
+#: src/sigillum/gui/app.py:770
 #, python-brace-format
 msgid ""
 "<span foreground='#2a7'>✓ Detected</span> <b>{label}</b> — {n} certificate(s)"
-msgstr "<span foreground='#2a7'>✓ Rilevato</span> <b>{label}</b> — {n} certificat(i)"
+msgstr ""
+"<span foreground='#2a7'>✓ Rilevato</span> <b>{label}</b> — {n} certificat(i)"
 
-#: src/sigillum/gui/app.py:694
+#: src/sigillum/gui/app.py:786
 msgid "Missing token driver"
 msgstr "Driver del token mancante"
 
-#: src/sigillum/gui/app.py:698
+#: src/sigillum/gui/app.py:790
 msgid "Close"
 msgstr "Chiudi"
 
-#: src/sigillum/gui/app.py:710
+#: src/sigillum/gui/app.py:802
 msgid ""
 "Sigillum detected a USB token but did not find a working PKCS#11 driver.\n"
 "Install the driver and then press <b>“Auto-detect token”</b> again."
 msgstr ""
-"Sigillum ha rilevato un token USB ma non ha trovato un driver PKCS#11 funzionante.\n"
+"Sigillum ha rilevato un token USB ma non ha trovato un driver PKCS#11 "
+"funzionante.\n"
 "Installa il driver e poi ripremi <b>“Rileva automaticamente token”</b>."
 
-#: src/sigillum/gui/app.py:725
+#: src/sigillum/gui/app.py:817
 #, python-brace-format
 msgid ""
 "<small>Recommended driver: <tt>{hint}</tt> (open source, installable from "
 "your distro's repository).</small>"
-msgstr "<small>Driver consigliato: <tt>{hint}</tt> (open source, installabile dal repo della tua distro).</small>"
+msgstr ""
+"<small>Driver consigliato: <tt>{hint}</tt> (open source, installabile dal "
+"repo della tua distro).</small>"
 
-#: src/sigillum/gui/app.py:732
+#: src/sigillum/gui/app.py:824
 #, python-brace-format
 msgid ""
 "<small>Driver: <tt>{hint}</tt> — proprietary, not redistributable. Download "
 "it from the issuer of your certificate.</small>"
-msgstr "<small>Driver: <tt>{hint}</tt> — proprietario, non ridistribuibile. Scaricalo dal sito dell'emittente del tuo certificato.</small>"
+msgstr ""
+"<small>Driver: <tt>{hint}</tt> — proprietario, non ridistribuibile. "
+"Scaricalo dal sito dell'emittente del tuo certificato.</small>"
 
-#: src/sigillum/gui/app.py:751
+#: src/sigillum/gui/app.py:843
 #, python-brace-format
 msgid ""
 "<small><i>Distro not recognized — look for a package called <tt>{hint}</tt> "
 "in your repos.</i></small>"
-msgstr "<small><i>Distro non riconosciuta — cerca un pacchetto chiamato <tt>{hint}</tt> nei tuoi repo.</i></small>"
+msgstr ""
+"<small><i>Distro non riconosciuta — cerca un pacchetto chiamato <tt>{hint}</"
+"tt> nei tuoi repo.</i></small>"
 
-#: src/sigillum/gui/app.py:760
+#: src/sigillum/gui/app.py:852
 #, python-brace-format
 msgid "Download from {label}"
 msgstr "Scarica da {label}"
 
-#: src/sigillum/gui/app.py:774
+#: src/sigillum/gui/app.py:866
 msgid "Multiple tokens found"
 msgstr "Più token trovati"
 
-#: src/sigillum/gui/app.py:778 src/sigillum/gui/app.py:1987
-#: src/sigillum/gui/signature_picker.py:77
+#: src/sigillum/gui/app.py:870 src/sigillum/gui/app.py:1123
+#: src/sigillum/gui/app.py:2292 src/sigillum/gui/signature_picker.py:77
 msgid "Cancel"
 msgstr "Annulla"
 
-#: src/sigillum/gui/app.py:779
+#: src/sigillum/gui/app.py:871
 msgid "Use this one"
 msgstr "Usa questo"
 
-#: src/sigillum/gui/app.py:788
+#: src/sigillum/gui/app.py:880
 msgid "Multiple tokens found. Which one do you want to use?"
 msgstr "Sono stati trovati più token. Quale vuoi usare?"
 
-#: src/sigillum/gui/app.py:795
+#: src/sigillum/gui/app.py:887
 #, python-brace-format
 msgid ""
 "{label}\n"
@@ -1243,593 +1403,686 @@ msgstr ""
 "{label}\n"
 "   {n} cert — {subjects}"
 
-#: src/sigillum/gui/app.py:850
-msgid "<i>Refreshing AgID TSL…</i>"
-msgstr "<i>Aggiornamento TSL AgID in corso…</i>"
+#: src/sigillum/gui/app.py:943
+msgid "<i>Refreshing national TSL…</i>"
+msgstr "<i>Aggiornamento TSL nazionale in corso…</i>"
 
-#: src/sigillum/gui/app.py:859
+#: src/sigillum/gui/app.py:977
+msgid "(none yet — use the button below)"
+msgstr "(nessuna — usa il bottone qui sotto)"
+
+#: src/sigillum/gui/app.py:993
+msgid "Use this country's certificates when verifying signatures."
+msgstr "Usa i certificati di questo paese quando verifichi le firme."
+
+#: src/sigillum/gui/app.py:1005
+msgid "never"
+msgstr "mai"
+
+#: src/sigillum/gui/app.py:1008
+#, python-brace-format
+msgid "imported {days}d ago"
+msgstr "importata {days}g fa"
+
+#: src/sigillum/gui/app.py:1011
+#, python-brace-format
+msgid "imported {days}d ago — stale"
+msgstr "importata {days}g fa — obsoleta"
+
+#: src/sigillum/gui/app.py:1021
+msgid "Re-download this country's TSL."
+msgstr "Riscarica la TSL di questo paese."
+
+#: src/sigillum/gui/app.py:1029
+msgid "Remove this country's TSL from disk."
+msgstr "Rimuovi la TSL di questo paese dal disco."
+
+#: src/sigillum/gui/app.py:1098
+#, python-brace-format
+msgid "Could not remove {p}: {ex}"
+msgstr "Impossibile rimuovere {p}: {ex}"
+
+#: src/sigillum/gui/app.py:1115
+msgid "All EU countries are already imported."
+msgstr "Tutti i paesi UE sono già importati."
+
+#: src/sigillum/gui/app.py:1119
+msgid "Add EU country"
+msgstr "Aggiungi paese UE"
+
+#: src/sigillum/gui/app.py:1124
+#
+msgid "Import"
+msgstr "Importa"
+
+#: src/sigillum/gui/app.py:1132
+msgid "Pick a country to download its national TSL via the EU LOTL."
+msgstr "Scegli un paese per scaricare la sua TSL nazionale via EU LOTL."
+
+#: src/sigillum/gui/app.py:1154
 msgid "<span foreground='#c33'>Never imported.</span>"
 msgstr "<span foreground='#c33'>Mai importata.</span>"
 
-#: src/sigillum/gui/app.py:863
+#: src/sigillum/gui/app.py:1158
 #, python-brace-format
 msgid "<span foreground='#2a7'>Imported {days} days ago.</span>"
 msgstr "<span foreground='#2a7'>Importata {days} giorni fa.</span>"
 
-#: src/sigillum/gui/app.py:867
+#: src/sigillum/gui/app.py:1162
 #, python-brace-format
 msgid "<span foreground='#c33'>Imported {days} days ago — refresh it.</span>"
-msgstr "<span foreground='#c33'>Importata {days} giorni fa — aggiornala.</span>"
+msgstr ""
+"<span foreground='#c33'>Importata {days} giorni fa — aggiornala.</span>"
 
-#: src/sigillum/gui/app.py:878
+#: src/sigillum/gui/app.py:1173
 #, python-brace-format
 msgid "Could not save settings: {ex}"
 msgstr "Impossibile salvare le impostazioni: {ex}"
 
-#: src/sigillum/gui/app.py:881
+#: src/sigillum/gui/app.py:1176
 #, python-brace-format
 msgid "<span foreground='#2a7'>✓ Saved</span>: {value}"
 msgstr "<span foreground='#2a7'>✓ Salvato</span>: {value}"
 
-#: src/sigillum/gui/app.py:897
+#: src/sigillum/gui/app.py:1192
 msgid "<i>Press refresh to change the certificate.</i>"
 msgstr "<i>Premi il refresh per cambiare il certificato.</i>"
 
-#: src/sigillum/gui/app.py:922
+#: src/sigillum/gui/app.py:1219
 #, python-brace-format
 msgid "Configured: {value}"
 msgstr "Configurato: {value}"
 
-#: src/sigillum/gui/app.py:940
+#: src/sigillum/gui/app.py:1239
 msgid "Select a certificate file."
 msgstr "Seleziona un file di certificato."
 
-#: src/sigillum/gui/app.py:973
+#: src/sigillum/gui/app.py:1263
 msgid "Press refresh and choose a certificate on the token."
 msgstr "Premi il refresh e scegli un certificato dal token."
 
-#: src/sigillum/gui/app.py:1000
+#: src/sigillum/gui/app.py:1282
 msgid "Document to sign:"
 msgstr "Documento da firmare:"
 
-#: src/sigillum/gui/app.py:1005
+#: src/sigillum/gui/app.py:1287
 msgid "Format: —"
 msgstr "Formato: —"
 
-#: src/sigillum/gui/app.py:1024
+#: src/sigillum/gui/app.py:1293 src/sigillum/gui/app.py:1877
+msgid "Output file name:"
+msgstr "Nome file di output:"
+
+#: src/sigillum/gui/app.py:1298 src/sigillum/gui/app.py:1882
+msgid "<will be filled in when you choose a file>"
+msgstr "<verrà compilato alla scelta del file>"
+
+#: src/sigillum/gui/app.py:1319
 msgid "<b>Options</b>"
 msgstr "<b>Opzioni</b>"
 
-#: src/sigillum/gui/app.py:1027
+#: src/sigillum/gui/app.py:1322
 msgid "Reason (optional):"
 msgstr "Motivo (opzionale):"
 
-#: src/sigillum/gui/app.py:1030
+#: src/sigillum/gui/app.py:1325
 msgid "Visible signature in the PDF (PAdES only)"
 msgstr "Firma visibile nel PDF (solo PAdES)"
 
-#: src/sigillum/gui/app.py:1033
+#: src/sigillum/gui/app.py:1328
 msgid "Use the defaults from Settings > Visible signature."
 msgstr "Usa le impostazioni di default da Impostazioni > Firma Visibile."
 
-#: src/sigillum/gui/app.py:1047 src/sigillum/gui/signature_picker.py:102
+#: src/sigillum/gui/app.py:1342 src/sigillum/gui/signature_picker.py:102
 msgid "Page:"
 msgstr "Pagina:"
 
-#: src/sigillum/gui/app.py:1051
+#: src/sigillum/gui/app.py:1346
 msgid "Last page"
 msgstr "Ultima pagina"
 
-#: src/sigillum/gui/app.py:1053
+#: src/sigillum/gui/app.py:1348
 msgid "Place the signature on the last page of the PDF."
 msgstr "Posiziona la firma sull'ultima pagina del PDF."
 
-#: src/sigillum/gui/app.py:1065
+#: src/sigillum/gui/app.py:1360
 msgid "Position:"
 msgstr "Posizione:"
 
-#: src/sigillum/gui/app.py:1072
+#: src/sigillum/gui/app.py:1367
 msgid "🖱 Draw on PDF…"
 msgstr "🖱 Disegna sul PDF…"
 
-#: src/sigillum/gui/app.py:1074
+#: src/sigillum/gui/app.py:1369
 msgid ""
 "Open a preview of the PDF and drag with the mouse to choose where the "
 "signature box will appear."
-msgstr "Apri un'anteprima del PDF e trascina col mouse per scegliere dove apparirà il riquadro della firma."
+msgstr ""
+"Apri un'anteprima del PDF e trascina col mouse per scegliere dove apparirà "
+"il riquadro della firma."
 
-#: src/sigillum/gui/app.py:1096
+#: src/sigillum/gui/app.py:1391
 msgid "Signature level:"
 msgstr "Livello firma:"
 
-#: src/sigillum/gui/app.py:1103
+#: src/sigillum/gui/app.py:1398
 msgid "B — without timestamp"
 msgstr "B — senza marca temporale"
 
-#: src/sigillum/gui/app.py:1104
+#: src/sigillum/gui/app.py:1399
 msgid "T — with timestamp"
 msgstr "T — con marca temporale"
 
-#: src/sigillum/gui/app.py:1105
+#: src/sigillum/gui/app.py:1400
 msgid "LT — Long Term (embedded chain + revocation)"
 msgstr "LT — Long Term (chain + revoca embeddati)"
 
-#: src/sigillum/gui/app.py:1119 src/sigillum/gui/app.py:2321
+#: src/sigillum/gui/app.py:1414 src/sigillum/gui/app.py:2635
 msgid "Sign"
 msgstr "Firma"
 
-#: src/sigillum/gui/app.py:1134
+#: src/sigillum/gui/app.py:1429
 #, python-brace-format
 msgid "<b>Device:</b> {value}"
 msgstr "<b>Dispositivo:</b> {value}"
 
-#: src/sigillum/gui/app.py:1137
+#: src/sigillum/gui/app.py:1432
 msgid "PIN:"
 msgstr "PIN:"
 
-#: src/sigillum/gui/app.py:1140
+#: src/sigillum/gui/app.py:1435
 msgid ""
 "<span foreground='#c33'>No device configured — go to the <b>Settings</b> tab."
 "</span>"
-msgstr "<span foreground='#c33'>Nessun dispositivo configurato — vai nella scheda <b>Impostazioni</b>.</span>"
+msgstr ""
+"<span foreground='#c33'>Nessun dispositivo configurato — vai nella scheda "
+"<b>Impostazioni</b>.</span>"
 
-#: src/sigillum/gui/app.py:1194
+#: src/sigillum/gui/app.py:1489
 msgid "<small>Basic signature, without timestamp.</small>"
 msgstr "<small>Firma di base, senza marca temporale.</small>"
 
-#: src/sigillum/gui/app.py:1199
+#: src/sigillum/gui/app.py:1494
 #, python-brace-format
 msgid "<small>Timestamp via TSA: <tt>{url}</tt></small>"
 msgstr "<small>Marca temporale via TSA: <tt>{url}</tt></small>"
 
-#: src/sigillum/gui/app.py:1204
+#: src/sigillum/gui/app.py:1499
 msgid ""
 "<small><span foreground='#c33'>No TSA configured — set one in Settings to "
 "use level T.</span></small>"
-msgstr "<small><span foreground='#c33'>Manca una TSA: configurala nelle Impostazioni per usare il livello T.</span></small>"
+msgstr ""
+"<small><span foreground='#c33'>Manca una TSA: configurala nelle Impostazioni "
+"per usare il livello T.</span></small>"
 
-#: src/sigillum/gui/app.py:1210
+#: src/sigillum/gui/app.py:1505
 #, python-brace-format
 msgid ""
 "<small><b>LT</b>: signature + timestamp + embedded certificate chain and "
 "OCSP responses. TSA: <tt>{url}</tt>. Requires a network connection at "
 "signing time (AIA + OCSP fetch).</small>"
-msgstr "<small><b>LT</b>: firma + marca temporale + catena di certificati e risposte OCSP embeddate. TSA: <tt>{url}</tt>. Richiede connessione di rete al momento della firma (fetch AIA + OCSP).</small>"
+msgstr ""
+"<small><b>LT</b>: firma + marca temporale + catena di certificati e risposte "
+"OCSP embeddate. TSA: <tt>{url}</tt>. Richiede connessione di rete al momento "
+"della firma (fetch AIA + OCSP).</small>"
 
-#: src/sigillum/gui/app.py:1219
+#: src/sigillum/gui/app.py:1514
 msgid ""
 "<small><span foreground='#c33'>LT requires a TSA configured in Settings.</"
 "span></small>"
-msgstr "<small><span foreground='#c33'>LT richiede una TSA configurata nelle Impostazioni.</span></small>"
+msgstr ""
+"<small><span foreground='#c33'>LT richiede una TSA configurata nelle "
+"Impostazioni.</span></small>"
 
-#: src/sigillum/gui/app.py:1228
+#: src/sigillum/gui/app.py:1524
 #, python-brace-format
 msgid "Format: {fmt}"
 msgstr "Formato: {fmt}"
 
-#: src/sigillum/gui/app.py:1254
+#: src/sigillum/gui/app.py:1551
 msgid "Select a PDF document first."
 msgstr "Seleziona prima un documento PDF."
 
-#: src/sigillum/gui/app.py:1270
+#: src/sigillum/gui/app.py:1567
 #, python-brace-format
 msgid "Could not open preview: {ex}"
 msgstr "Impossibile aprire l'anteprima: {ex}"
 
-#: src/sigillum/gui/app.py:1299
+#: src/sigillum/gui/app.py:1596
 #, python-brace-format
 msgid ""
 "<small><span foreground='#2a7'>✓ Custom position</span> — page {page}, "
 "{w:.0f}×{h:.0f} mm</small>"
-msgstr "<small><span foreground='#2a7'>✓ Posizione personalizzata</span> — pagina {page}, {w:.0f}×{h:.0f} mm</small>"
+msgstr ""
+"<small><span foreground='#2a7'>✓ Posizione personalizzata</span> — pagina "
+"{page}, {w:.0f}×{h:.0f} mm</small>"
 
-#: src/sigillum/gui/app.py:1307
+#: src/sigillum/gui/app.py:1604
 #, python-brace-format
 msgid "<small>Preset position: <b>{label}</b></small>"
 msgstr "<small>Posizione preset: <b>{label}</b></small>"
 
-#: src/sigillum/gui/app.py:1321 src/sigillum/gui/app.py:1869
+#: src/sigillum/gui/app.py:1618 src/sigillum/gui/app.py:2174
 msgid "Configure a device in Settings first."
 msgstr "Configura prima un dispositivo nelle Impostazioni."
 
-#: src/sigillum/gui/app.py:1326
+#: src/sigillum/gui/app.py:1623
 msgid "Select a document to sign."
 msgstr "Seleziona un documento da firmare."
 
-#: src/sigillum/gui/app.py:1331
+#: src/sigillum/gui/app.py:1628
 msgid "Enter the PIN"
 msgstr "Inserisci il PIN"
 
-#: src/sigillum/gui/app.py:1331
+#: src/sigillum/gui/app.py:1628
 msgid "Enter the password"
 msgstr "Inserisci la password"
 
-#: src/sigillum/gui/app.py:1341
+#: src/sigillum/gui/app.py:1635 src/sigillum/gui/app.py:2132
+msgid "Provide the output file name."
+msgstr "Indica il nome del file di output."
+
+#: src/sigillum/gui/app.py:1640 src/sigillum/gui/app.py:2137
+msgid "The output file is the same as the source — change the name."
+msgstr "Il file di output coincide col sorgente — cambia nome."
+
+#: src/sigillum/gui/app.py:1646
 #, python-brace-format
 msgid "Level {level} requires a TSA configured in Settings."
 msgstr "Livello {level} richiede una TSA configurata nelle Impostazioni."
 
-#: src/sigillum/gui/app.py:1382
+#: src/sigillum/gui/app.py:1687
 #, python-brace-format
 msgid "Signing failed: {ex}"
 msgstr "Firma fallita: {ex}"
 
-#: src/sigillum/gui/app.py:1389
+#: src/sigillum/gui/app.py:1694
 #, python-brace-format
 msgid "<span foreground='#2a7'>✓ Signed</span>: {path}"
 msgstr "<span foreground='#2a7'>✓ Firmato</span>: {path}"
 
-#: src/sigillum/gui/app.py:1412
+#: src/sigillum/gui/app.py:1717
 msgid "File to timestamp:"
 msgstr "File da marcare temporalmente:"
 
-#: src/sigillum/gui/app.py:1422
+#: src/sigillum/gui/app.py:1727
 msgid "<b>Format</b>"
 msgstr "<b>Formato</b>"
 
-#: src/sigillum/gui/app.py:1425
+#: src/sigillum/gui/app.py:1730
 msgid "TSR — evidence only (requires the original file to verify)"
 msgstr "TSR — solo evidenza (richiede file originale per la verifica)"
 
-#: src/sigillum/gui/app.py:1428
+#: src/sigillum/gui/app.py:1733
 msgid ""
 "Saves only the TSA response (DER TimeStampToken). Contains the file hash but "
 "not the file. Verification needs the original file separately."
-msgstr "Salva soltanto la risposta della TSA (TimeStampToken DER). Contiene l'impronta del file ma non il file. Per verificare serve l'originale separato."
+msgstr ""
+"Salva soltanto la risposta della TSA (TimeStampToken DER). Contiene "
+"l'impronta del file ma non il file. Per verificare serve l'originale "
+"separato."
 
-#: src/sigillum/gui/app.py:1434
+#: src/sigillum/gui/app.py:1739
 msgid "TSD — self-contained envelope (evidence + embedded file)"
 msgstr "TSD — busta autoconsistente (evidenza + file embedded)"
 
-#: src/sigillum/gui/app.py:1437
+#: src/sigillum/gui/app.py:1742
 msgid ""
 "ETSI TS 119 422 envelope: contains both the timestamp and the original file. "
 "Verifiable on its own, without separate files."
-msgstr "Busta ETSI TS 119 422: contiene sia la marca temporale che il file originale. Verificabile da sola, senza file separato."
+msgstr ""
+"Busta ETSI TS 119 422: contiene sia la marca temporale che il file "
+"originale. Verificabile da sola, senza file separato."
 
-#: src/sigillum/gui/app.py:1466
+#: src/sigillum/gui/app.py:1771
 msgid " (with credentials)"
 msgstr " (con credenziali)"
 
-#: src/sigillum/gui/app.py:1468
+#: src/sigillum/gui/app.py:1773
 #, python-brace-format
 msgid "<small><b>TSA configured:</b> {url}{auth}</small>"
 msgstr "<small><b>TSA configurata:</b> {url}{auth}</small>"
 
-#: src/sigillum/gui/app.py:1474
+#: src/sigillum/gui/app.py:1779
 msgid ""
 "<small><span foreground='#c33'>No TSA configured — set a URL in Settings → "
 "Timestamp.</span></small>"
-msgstr "<small><span foreground='#c33'>Nessuna TSA configurata — imposta un URL in Impostazioni → Marca temporale.</span></small>"
+msgstr ""
+"<small><span foreground='#c33'>Nessuna TSA configurata — imposta un URL in "
+"Impostazioni → Marca temporale.</span></small>"
 
-#: src/sigillum/gui/app.py:1485
+#: src/sigillum/gui/app.py:1790
 msgid "Set a TSA in Settings before timestamping."
 msgstr "Imposta una TSA in Impostazioni prima di marcare."
 
-#: src/sigillum/gui/app.py:1489
+#: src/sigillum/gui/app.py:1794
 msgid "Select a file to timestamp first."
 msgstr "Seleziona prima un file da marcare."
 
-#: src/sigillum/gui/app.py:1497
+#: src/sigillum/gui/app.py:1802
 msgid "<i>Sending request to the TSA…</i>"
 msgstr "<i>Richiesta alla TSA in corso…</i>"
 
-#: src/sigillum/gui/app.py:1524
+#: src/sigillum/gui/app.py:1829
 #, python-brace-format
 msgid "<span foreground='#2a7'>✓ Timestamp saved</span>: {msg}"
 msgstr "<span foreground='#2a7'>✓ Marca temporale salvata</span>: {msg}"
 
-#: src/sigillum/gui/app.py:1528
+#: src/sigillum/gui/app.py:1833
 #, python-brace-format
 msgid "Timestamping failed: {msg}"
 msgstr "Marcatura fallita: {msg}"
 
-#: src/sigillum/gui/app.py:1562
+#: src/sigillum/gui/app.py:1867
 msgid "File to encrypt:"
 msgstr "File da cifrare:"
 
-#: src/sigillum/gui/app.py:1572
-msgid "Output file name:"
-msgstr "Nome file di output:"
-
-#: src/sigillum/gui/app.py:1577
-msgid "<will be filled in when you choose a file>"
-msgstr "<verrà compilato alla scelta del file>"
-
-#: src/sigillum/gui/app.py:1583
+#: src/sigillum/gui/app.py:1888
 msgid "Encrypted file:"
 msgstr "File cifrato:"
 
-#: src/sigillum/gui/app.py:1589
+#: src/sigillum/gui/app.py:1894
 msgid "Encrypted files"
 msgstr "File cifrati"
 
-#: src/sigillum/gui/app.py:1594
+#: src/sigillum/gui/app.py:1899
 msgid "All files"
 msgstr "Tutti i file"
 
-#: src/sigillum/gui/app.py:1611 src/sigillum/gui/app.py:1745
-#: src/sigillum/gui/app.py:2324
+#: src/sigillum/gui/app.py:1916 src/sigillum/gui/app.py:2050
+#: src/sigillum/gui/app.py:2638
 msgid "Encrypt"
 msgstr "Cifra"
 
-#: src/sigillum/gui/app.py:1627
+#: src/sigillum/gui/app.py:1932
 msgid "<b>Type</b>"
 msgstr "<b>Tipo</b>"
 
-#: src/sigillum/gui/app.py:1631
+#: src/sigillum/gui/app.py:1936
 msgid "Symmetric with password"
 msgstr "Simmetrica con password"
 
-#: src/sigillum/gui/app.py:1635
+#: src/sigillum/gui/app.py:1940
 msgid "Asymmetric with the device configured in Settings"
 msgstr "Asimmetrica con il dispositivo configurato nelle Impostazioni"
 
-#: src/sigillum/gui/app.py:1646
+#: src/sigillum/gui/app.py:1951
 msgid "Algorithm:"
 msgstr "Algoritmo:"
 
-#: src/sigillum/gui/app.py:1652
+#: src/sigillum/gui/app.py:1957
 msgid "  Password:"
 msgstr "  Password:"
 
-#: src/sigillum/gui/app.py:1675 src/sigillum/gui/app.py:1786
+#: src/sigillum/gui/app.py:1980 src/sigillum/gui/app.py:2091
 msgid "<small><i>Choose a file to detect the format.</i></small>"
 msgstr "<small><i>Scegli un file per rilevare il formato.</i></small>"
 
-#: src/sigillum/gui/app.py:1681 src/sigillum/gui/app.py:1788
-#: src/sigillum/gui/app.py:1808
+#: src/sigillum/gui/app.py:1986 src/sigillum/gui/app.py:2093
+#: src/sigillum/gui/app.py:2113
 msgid "Password / PIN:"
 msgstr "Password / PIN:"
 
-#: src/sigillum/gui/app.py:1748 src/sigillum/gui/app.py:2325
+#: src/sigillum/gui/app.py:2053 src/sigillum/gui/app.py:2639
 msgid "Decrypt"
 msgstr "Decifra"
 
-#: src/sigillum/gui/app.py:1768
+#: src/sigillum/gui/app.py:2073
 msgid "<small><span foreground='#c33'>No device configured.</span></small>"
-msgstr "<small><span foreground='#c33'>Nessun dispositivo configurato.</span></small>"
+msgstr ""
+"<small><span foreground='#c33'>Nessun dispositivo configurato.</span></small>"
 
-#: src/sigillum/gui/app.py:1773
+#: src/sigillum/gui/app.py:2078
 #, python-brace-format
 msgid "<small>Will encrypt to: <b>{value}</b></small>"
 msgstr "<small>Cifrerà verso: <b>{value}</b></small>"
 
-#: src/sigillum/gui/app.py:1792
+#: src/sigillum/gui/app.py:2097
 msgid ""
 "<small>Detected format: <b>symmetric encryption with password</b></small>"
-msgstr "<small>Formato rilevato: <b>cifratura simmetrica con password</b></small>"
+msgstr ""
+"<small>Formato rilevato: <b>cifratura simmetrica con password</b></small>"
 
-#: src/sigillum/gui/app.py:1797
+#: src/sigillum/gui/app.py:2102
 msgid "<i>(no device)</i>"
 msgstr "<i>(nessun dispositivo)</i>"
 
-#: src/sigillum/gui/app.py:1799
+#: src/sigillum/gui/app.py:2104
 #, python-brace-format
 msgid ""
 "<small>Detected format: <b>asymmetric encryption</b> (will decrypt with "
 "{who})</small>"
-msgstr "<small>Formato rilevato: <b>cifratura asimmetrica</b> (decifrerà con {who})</small>"
+msgstr ""
+"<small>Formato rilevato: <b>cifratura asimmetrica</b> (decifrerà con {who})</"
+"small>"
 
-#: src/sigillum/gui/app.py:1802
+#: src/sigillum/gui/app.py:2107
 msgid "Token PIN:"
 msgstr "PIN del token:"
 
-#: src/sigillum/gui/app.py:1802
+#: src/sigillum/gui/app.py:2107
 msgid "Certificate password:"
 msgstr "Password del certificato:"
 
-#: src/sigillum/gui/app.py:1806
+#: src/sigillum/gui/app.py:2111
 msgid "<small><span foreground='#c33'>Unrecognized format</span></small>"
 msgstr "<small><span foreground='#c33'>Formato non riconosciuto</span></small>"
 
-#: src/sigillum/gui/app.py:1815
+#: src/sigillum/gui/app.py:2120
 msgid "Select a file."
 msgstr "Seleziona un file."
 
-#: src/sigillum/gui/app.py:1827
-msgid "Provide the output file name."
-msgstr "Indica il nome del file di output."
-
-#: src/sigillum/gui/app.py:1832
-msgid "The output file is the same as the source — change the name."
-msgstr "Il file di output coincide col sorgente — cambia nome."
-
-#: src/sigillum/gui/app.py:1839
+#: src/sigillum/gui/app.py:2144
 msgid "Enter a password."
 msgstr "Inserisci una password."
 
-#: src/sigillum/gui/app.py:1853
+#: src/sigillum/gui/app.py:2158
 #, python-brace-format
 msgid "Encryption failed: {ex}"
 msgstr "Cifratura fallita: {ex}"
 
-#: src/sigillum/gui/app.py:1857
+#: src/sigillum/gui/app.py:2162
 #, python-brace-format
 msgid "<span foreground='#2a7'>✓ Encrypted</span>: {path}"
 msgstr "<span foreground='#2a7'>✓ Cifrato</span>: {path}"
 
-#: src/sigillum/gui/app.py:1895
+#: src/sigillum/gui/app.py:2200
 msgid "Certificate not found on the token."
 msgstr "Certificato non trovato sul token."
 
-#: src/sigillum/gui/app.py:1898
+#: src/sigillum/gui/app.py:2203
 msgid "Certificate password"
 msgstr "Password del certificato"
 
-#: src/sigillum/gui/app.py:1905
+#: src/sigillum/gui/app.py:2210
 #, python-brace-format
 msgid "Could not read the certificate: {ex}"
 msgstr "Impossibile leggere il certificato: {ex}"
 
-#: src/sigillum/gui/app.py:1920
+#: src/sigillum/gui/app.py:2225
 msgid "Unrecognized format (neither SIGILLUM nor CMS EnvelopedData)."
 msgstr "Formato non riconosciuto (né SIGILLUM né CMS EnvelopedData)."
 
-#: src/sigillum/gui/app.py:1925
+#: src/sigillum/gui/app.py:2230
 msgid "Enter the password or PIN."
 msgstr "Inserisci la password o il PIN."
 
-#: src/sigillum/gui/app.py:1941 src/sigillum/gui/app.py:1950
+#: src/sigillum/gui/app.py:2246 src/sigillum/gui/app.py:2255
 #, python-brace-format
 msgid "Decryption failed: {ex}"
 msgstr "Decifratura fallita: {ex}"
 
-#: src/sigillum/gui/app.py:1957
+#: src/sigillum/gui/app.py:2262
 #, python-brace-format
 msgid "<span foreground='#2a7'>✓ Decrypted</span>: {path}"
 msgstr "<span foreground='#2a7'>✓ Decifrato</span>: {path}"
 
-#: src/sigillum/gui/app.py:1969
+#: src/sigillum/gui/app.py:2274
 msgid "No device configured."
 msgstr "Nessun dispositivo configurato."
 
-#: src/sigillum/gui/app.py:1980
+#: src/sigillum/gui/app.py:2285
 #, python-brace-format
 msgid "Opening credential failed: {ex}"
 msgstr "Apertura credenziale fallita: {ex}"
 
-#: src/sigillum/gui/app.py:2019
+#: src/sigillum/gui/app.py:2324
 msgid "Signed or timestamped file (.pdf, .p7m, .xml, .tsr, .tsd):"
 msgstr "File firmato o marcato (.pdf, .p7m, .xml, .tsr, .tsd):"
 
-#: src/sigillum/gui/app.py:2036
+#: src/sigillum/gui/app.py:2341
 msgid "Original file (for TSR):"
 msgstr "File originale (per TSR):"
 
-#: src/sigillum/gui/app.py:2051
+#: src/sigillum/gui/app.py:2356
 msgid "Import now"
 msgstr "Importa ora"
 
-#: src/sigillum/gui/app.py:2060
+#: src/sigillum/gui/app.py:2365
 msgid "Advanced options"
 msgstr "Opzioni aggiuntive"
 
-#: src/sigillum/gui/app.py:2065
+#: src/sigillum/gui/app.py:2370
 msgid "Additional trusted CA (.pem):"
 msgstr "CA di fiducia aggiuntiva (.pem):"
 
-#: src/sigillum/gui/app.py:2072
+#: src/sigillum/gui/app.py:2377
 msgid "TSA CA (.pem):"
 msgstr "CA della TSA (.pem):"
 
-#: src/sigillum/gui/app.py:2079
+#: src/sigillum/gui/app.py:2384
 msgid "Use the imported AgID TSL"
 msgstr "Usa la TSL AgID importata"
 
-#: src/sigillum/gui/app.py:2089 src/sigillum/gui/app.py:2322
+#: src/sigillum/gui/app.py:2394 src/sigillum/gui/app.py:2636
 msgid "Verify"
 msgstr "Verifica"
 
-#: src/sigillum/gui/app.py:2117
+#: src/sigillum/gui/app.py:2423
+#, python-brace-format
 msgid ""
-"<small>Trust store: <span foreground='#c33'>AgID TSL not imported.</span></"
+"<small>Trust store: <span foreground='#c33'>{cc} TSL not imported.</span></"
 "small>"
-msgstr "<small>Trust store: <span foreground='#c33'>TSL AgID non importata.</span></small>"
+msgstr "<small>Trust store: <span foreground='#c33'>TSL {cc} non importata.</span></small>"
 
-#: src/sigillum/gui/app.py:2130
-msgid "<small>Trust store: AgID TSL (import date unknown).</small>"
-msgstr "<small>Trust store: TSL AgID (data importazione sconosciuta).</small>"
-
-#: src/sigillum/gui/app.py:2134
+#: src/sigillum/gui/app.py:2437
 #, python-brace-format
-msgid "<small>Trust store: AgID TSL, imported {days} days ago.</small>"
-msgstr "<small>Trust store: TSL AgID, importata {days} giorni fa.</small>"
+msgid "<small>Trust store: {cc} TSL (import date unknown).</small>"
+msgstr "<small>Trust store: TSL {cc} (data import sconosciuta).</small>"
 
-#: src/sigillum/gui/app.py:2138
+#: src/sigillum/gui/app.py:2441
+#, python-brace-format
+msgid "<small>Trust store: {cc} TSL, primary imported {days} days ago.</small>"
+msgstr "<small>Trust store: TSL {cc}, primary importata {days} giorni fa.</small>"
+
+#: src/sigillum/gui/app.py:2446
 #, python-brace-format
 msgid ""
-"<small>Trust store: <span foreground='#c33'>AgID TSL from {days} days ago — "
+"<small>Trust store: <span foreground='#c33'>{cc} TSL from {days} days ago — "
 "refresh it.</span></small>"
-msgstr "<small>Trust store: <span foreground='#c33'>TSL AgID di {days} giorni fa — aggiornala.</span></small>"
+msgstr ""
+"<small>Trust store: <span foreground='#c33'>TSL {cc} di {days} giorni fa — "
+"aggiornala.</span></small>"
 
-#: src/sigillum/gui/app.py:2147
+#: src/sigillum/gui/app.py:2456
 msgid "<small><i>Refreshing AgID TSL…</i></small>"
 msgstr "<small><i>Aggiornamento TSL AgID in corso…</i></small>"
 
-#: src/sigillum/gui/app.py:2181
+#: src/sigillum/gui/app.py:2490
 #, python-brace-format
 msgid "Could not read {what}: {ex}"
 msgstr "Impossibile leggere {what}: {ex}"
 
-#: src/sigillum/gui/app.py:2184
+#: src/sigillum/gui/app.py:2493
 msgid "the CA"
 msgstr "la CA"
 
-#: src/sigillum/gui/app.py:2187
+#: src/sigillum/gui/app.py:2496
 msgid "the TSA CA"
 msgstr "la CA della TSA"
 
-#: src/sigillum/gui/app.py:2203
+#: src/sigillum/gui/app.py:2517
 msgid "Verifying a .tsr file requires the original file."
 msgstr "Per verificare un file .tsr serve il file originale."
 
-#: src/sigillum/gui/app.py:2208 src/sigillum/gui/app.py:2214
-#: src/sigillum/gui/app.py:2220
+#: src/sigillum/gui/app.py:2522 src/sigillum/gui/app.py:2528
+#: src/sigillum/gui/app.py:2534
 #, python-brace-format
 msgid "Verification failed: {ex}"
 msgstr "Verifica fallita: {ex}"
 
-#: src/sigillum/gui/app.py:2226
+#: src/sigillum/gui/app.py:2540
 msgid "No signature found."
 msgstr "Nessuna firma trovata."
 
-#: src/sigillum/gui/app.py:2256
+#: src/sigillum/gui/app.py:2570
 #, python-brace-format
 msgid "Signature {n}"
 msgstr "Firma {n}"
 
-#: src/sigillum/gui/app.py:2263
+#: src/sigillum/gui/app.py:2577
 #, python-brace-format
 msgid "Signer: {value}"
 msgstr "Firmatario: {value}"
 
-#: src/sigillum/gui/app.py:2266
+#: src/sigillum/gui/app.py:2580
 #, python-brace-format
 msgid "Issuer: {value}"
 msgstr "Emittente: {value}"
 
-#: src/sigillum/gui/app.py:2269
+#: src/sigillum/gui/app.py:2583
 #, python-brace-format
 msgid "hash {hash}    signature {sig}    certificate {chain}"
 msgstr "hash {hash}    firma {sig}    certificato {chain}"
 
-#: src/sigillum/gui/app.py:2270 src/sigillum/gui/app.py:2271
+#: src/sigillum/gui/app.py:2584 src/sigillum/gui/app.py:2585
 msgid "KO"
 msgstr "KO"
 
-#: src/sigillum/gui/app.py:2272
+#: src/sigillum/gui/app.py:2586
 msgid "untrusted"
 msgstr "non fidato"
 
-#: src/sigillum/gui/app.py:2279
+#: src/sigillum/gui/app.py:2593
 #, python-brace-format
 msgid "Timestamp: {when}"
 msgstr "Marca temporale: {when}"
 
-#: src/sigillum/gui/app.py:2283
+#: src/sigillum/gui/app.py:2597
 #, python-brace-format
 msgid "TSA: {value}"
 msgstr "TSA: {value}"
 
-#: src/sigillum/gui/app.py:2286
+#: src/sigillum/gui/app.py:2600
 msgid "trusted TSA"
 msgstr "TSA fidata"
 
-#: src/sigillum/gui/app.py:2286
+#: src/sigillum/gui/app.py:2600
 msgid "untrusted TSA"
 msgstr "TSA non fidata"
 
-#: src/sigillum/gui/app.py:2326
+#: src/sigillum/gui/app.py:2640
 msgid "Settings"
 msgstr "Impostazioni"
 
-#: src/sigillum/gui/app.py:2388
-#, python-brace-format
-msgid "{n_sign} signing CAs, {n_tsa} TSA CAs"
-msgstr "{n_sign} CA firmatari, {n_tsa} CA TSA"
+#: src/sigillum/gui/app.py:2716
+msgid "✓ signature verified (LOTL-anchored)"
+msgstr "✓ firma verificata (ancorata a LOTL)"
 
-#: src/sigillum/gui/app.py:2408
+#: src/sigillum/gui/app.py:2718
+msgid "✓ signature verified (no LOTL)"
+msgstr "✓ firma verificata (senza LOTL)"
+
+#: src/sigillum/gui/app.py:2720
+msgid "⚠ signature not verified"
+msgstr "⚠ firma non verificata"
+
+#: src/sigillum/gui/app.py:2721
+#, python-brace-format
+msgid "{cc}: {n_sign} signing CAs, {n_tsa} TSA CAs — {sig}"
+msgstr "{cc}: {n_sign} CA firmatarie, {n_tsa} CA TSA — {sig}"
+
+#: src/sigillum/gui/app.py:2744
 #, python-brace-format
 msgid "TSL import failed: {msg}"
 msgstr "Importazione TSL fallita: {msg}"
@@ -1845,7 +2098,9 @@ msgstr " di {n}"
 
 #: src/sigillum/gui/signature_picker.py:114
 msgid "<small>Drag with the mouse to draw the signature box position.</small>"
-msgstr "<small>Trascina col mouse per disegnare la posizione del riquadro della firma.</small>"
+msgstr ""
+"<small>Trascina col mouse per disegnare la posizione del riquadro della "
+"firma.</small>"
 
 #: src/sigillum/gui/signature_picker.py:259
 msgid "<small><i>Drag to draw the box.</i></small>"
@@ -1856,4 +2111,13 @@ msgstr "<small><i>Pagina A4 — trascina per disegnare il riquadro.</i></small>"
 msgid ""
 "<small>Box: <b>{w_mm:.0f} × {h_mm:.0f} mm</b> ({w_pt:.0f}×{h_pt:.0f} pt) — "
 "page origin (PDF): ({x:.0f}, {y:.0f})</small>"
-msgstr "<small>Riquadro: <b>{w_mm:.0f} × {h_mm:.0f} mm</b> ({w_pt:.0f}×{h_pt:.0f} pt) — origin pagina (PDF): ({x:.0f}, {y:.0f})</small>"
+msgstr ""
+"<small>Riquadro: <b>{w_mm:.0f} × {h_mm:.0f} mm</b> ({w_pt:.0f}×{h_pt:.0f} "
+"pt) — origin pagina (PDF): ({x:.0f}, {y:.0f})</small>"
+
+#, python-brace-format
+#~ msgid "Download the Italian qualified CA certificates from {url}"
+#~ msgstr "Scarica i certificati delle CA italiane qualificate da {url}"
+
+#~ msgid "Import from AgID TSL"
+#~ msgstr "Importa da TSL AgID"

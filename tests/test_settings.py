@@ -101,6 +101,117 @@ def test_unknown_source_value_treated_as_none():
         print("OK unknown source rejected")
 
 
+# ---------------------------------------------------------------------------
+# Multi-country settings (phase 3+)
+# ---------------------------------------------------------------------------
+
+from sigillum.core.settings import (  # noqa: E402
+    LOTL_COUNTRIES,
+    default_country_from_locale,
+)
+
+
+def test_default_country_from_locale(monkeypatch):
+    """Locale → LOTL country mapping handles the common cases + EU quirks."""
+    monkeypatch.setenv("LANG", "it_IT.UTF-8")
+    monkeypatch.delenv("LC_ALL", raising=False)
+    assert default_country_from_locale() == "IT"
+
+    monkeypatch.setenv("LANG", "de_DE.UTF-8")
+    assert default_country_from_locale() == "DE"
+
+    # ISO uses GB but the LOTL uses UK.
+    monkeypatch.setenv("LANG", "en_GB.UTF-8")
+    assert default_country_from_locale() == "UK"
+
+    # ISO uses GR but the LOTL uses EL (Hellas).
+    monkeypatch.setenv("LANG", "el_GR.UTF-8")
+    assert default_country_from_locale() == "EL"
+
+    # Non-EU locale → IT fallback.
+    monkeypatch.setenv("LANG", "en_US.UTF-8")
+    assert default_country_from_locale() == "IT"
+
+    # Empty / C locale → IT fallback.
+    monkeypatch.setenv("LANG", "")
+    assert default_country_from_locale() == "IT"
+    print("OK default_country_from_locale")
+
+
+def test_effective_country_respects_override(monkeypatch):
+    monkeypatch.setenv("LANG", "it_IT.UTF-8")
+    monkeypatch.delenv("LC_ALL", raising=False)
+
+    s = Settings()
+    assert s.effective_country() == "IT"  # locale fallback
+
+    s.country = "DE"
+    assert s.effective_country() == "DE"  # explicit override wins
+
+    s.country = "XX"  # not in LOTL → ignored, fall back to locale
+    assert s.effective_country() == "IT"
+    print("OK effective_country override + invalid → fallback")
+
+
+def test_active_countries_defaults_to_primary(monkeypatch):
+    monkeypatch.setenv("LANG", "fr_FR.UTF-8")
+    monkeypatch.delenv("LC_ALL", raising=False)
+
+    s = Settings()
+    assert s.active_countries() == ["FR"]  # one-element list, never empty
+
+    s.tsl_active_countries = ["IT", "DE"]
+    assert s.active_countries() == ["IT", "DE"]
+    print("OK active_countries fallback + explicit")
+
+
+def test_record_import_mirrors_legacy_field_for_primary(monkeypatch):
+    monkeypatch.setenv("LANG", "de_DE.UTF-8")
+    monkeypatch.delenv("LC_ALL", raising=False)
+
+    s = Settings()  # primary derived from LANG → DE
+    s.record_import("DE", "2026-05-25T10:00:00+00:00")
+    s.record_import("IT", "2026-05-25T11:00:00+00:00")
+
+    assert s.tsl_imports == {
+        "DE": "2026-05-25T10:00:00+00:00",
+        "IT": "2026-05-25T11:00:00+00:00",
+    }
+    # Only the primary country mirrors into the legacy tsl_last_import.
+    assert s.tsl_last_import == "2026-05-25T10:00:00+00:00"
+    print("OK record_import legacy mirror")
+
+
+def test_legacy_v0_1_migration(monkeypatch):
+    """A v0.1 settings file (only tsl_last_import) is migrated on load."""
+    monkeypatch.setenv("LANG", "it_IT.UTF-8")
+    monkeypatch.delenv("LC_ALL", raising=False)
+
+    with tempfile.TemporaryDirectory() as td:
+        p = Path(td) / "settings.json"
+        p.write_text(
+            '{"source": "file", "file_path": "/x.p12",'
+            ' "tsl_last_import": "2026-05-24T10:00:00+00:00"}'
+        )
+        loaded = load_settings(p)
+        # New fields populated from the legacy timestamp + locale default.
+        assert loaded.tsl_imports == {"IT": "2026-05-24T10:00:00+00:00"}
+        assert loaded.tsl_active_countries == ["IT"]
+        # Legacy field preserved verbatim.
+        assert loaded.tsl_last_import == "2026-05-24T10:00:00+00:00"
+        print("OK v0.1 → v0.2 migration")
+
+
+def test_lotl_countries_is_a_reasonable_set():
+    # Sanity: spot-check a few member states + EEA, and the LOTL-quirky codes.
+    for cc in ("IT", "DE", "FR", "ES", "EL", "UK", "NO", "IS"):
+        assert cc in LOTL_COUNTRIES, f"{cc} missing from LOTL_COUNTRIES"
+    # GR is the ISO code for Greece, not the LOTL one — must NOT be present.
+    assert "GR" not in LOTL_COUNTRIES
+    assert "GB" not in LOTL_COUNTRIES
+    print(f"OK LOTL_COUNTRIES: {len(LOTL_COUNTRIES)} entries")
+
+
 if __name__ == "__main__":
     test_defaults_when_file_missing()
     test_roundtrip_file_source()
@@ -108,4 +219,7 @@ if __name__ == "__main__":
     test_roundtrip_pkcs11_source()
     test_corrupted_file_falls_back_to_defaults()
     test_unknown_source_value_treated_as_none()
-    print("\nTutti i test settings passati.")
+    test_lotl_countries_is_a_reasonable_set()
+    # The monkeypatch-based tests need pytest fixtures; invoke via:
+    #   pytest tests/test_settings.py
+    print("\nTutti i test settings passati (esegui `pytest tests/test_settings.py` per i test parametrici).")
