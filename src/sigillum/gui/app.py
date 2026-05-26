@@ -2616,6 +2616,65 @@ class VerifyView(Gtk.Box):
 #  Window + Application
 # =====================================================================
 
+class _IconLabelStackSwitcher(Gtk.Box):
+    """Tab switcher that shows icon + label for each Stack child.
+
+    Gtk.StackSwitcher (GTK 3) collapses to icon-only when ``icon-name`` is
+    set on the child. We need both, so build a row of linked toggle buttons
+    ourselves and keep them in lock-step with the underlying Stack.
+    """
+
+    def __init__(self, stack: Gtk.Stack, tabs: list[tuple[Gtk.Widget, str, str, str]]):
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        self.get_style_context().add_class("linked")
+        self._stack = stack
+        self._buttons: dict[str, Gtk.RadioButton] = {}
+        self._syncing = False
+
+        first: Gtk.RadioButton | None = None
+        for _view, name, title, icon_name in tabs:
+            btn = Gtk.RadioButton.new_from_widget(first)
+            btn.set_mode(False)  # render as a toggle button, not a radio dot
+            if first is None:
+                first = btn
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            row.pack_start(
+                Gtk.Image.new_from_icon_name(icon_name, Gtk.IconSize.BUTTON),
+                False, False, 0,
+            )
+            row.pack_start(Gtk.Label(label=title), False, False, 0)
+            btn.add(row)
+            btn.connect("toggled", self._on_button_toggled, name)
+            self._buttons[name] = btn
+            self.pack_start(btn, False, False, 0)
+
+        # Keep the buttons in sync if the Stack is switched programmatically.
+        stack.connect("notify::visible-child", self._on_stack_changed)
+        current = stack.get_visible_child_name()
+        if current in self._buttons:
+            self._buttons[current].set_active(True)
+
+    def _on_button_toggled(self, btn: Gtk.RadioButton, name: str):
+        # GTK fires `toggled` on both the deactivated and the newly active
+        # radio; act only on the activation event.
+        if self._syncing or not btn.get_active():
+            return
+        if self._stack.get_visible_child_name() != name:
+            self._stack.set_visible_child_name(name)
+
+    def _on_stack_changed(self, stack: Gtk.Stack, _pspec):
+        name = stack.get_visible_child_name()
+        btn = self._buttons.get(name)
+        if btn is None or btn.get_active():
+            return
+        # Guard against the button's `toggled` handler firing us back.
+        self._syncing = True
+        try:
+            btn.set_active(True)
+        finally:
+            self._syncing = False
+
+
 class SigillumWindow(Gtk.ApplicationWindow):
     def __init__(self, app: Gtk.Application):
         super().__init__(application=app, title="Sigillum")
@@ -2642,13 +2701,15 @@ class SigillumWindow(Gtk.ApplicationWindow):
             (self._decrypt_view,  "decrypt",  _("Decrypt"),   "changes-allow-symbolic"),
             (self._settings_view, "settings", _("Settings"),  "preferences-system-symbolic"),
         ]
-        for view, name, title, icon in tabs:
+        for view, name, title, _icon in tabs:
             self._stack.add_titled(view, name, title)
-            self._stack.child_set_property(view, "icon-name", icon)
         # Refresh tabs that depend on settings whenever the user returns.
         self._stack.connect("notify::visible-child", self._on_tab_changed)
 
-        switcher = Gtk.StackSwitcher(stack=self._stack)
+        # Custom switcher — Gtk.StackSwitcher in GTK 3 shows EITHER the icon
+        # OR the label, never both. Build a row of toggle buttons that pack
+        # icon + label side by side and stay in sync with the Stack.
+        switcher = _IconLabelStackSwitcher(self._stack, tabs)
         header.set_custom_title(switcher)
 
         self.add(self._stack)
