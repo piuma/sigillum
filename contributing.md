@@ -1,3 +1,11 @@
+## Installation with development tools
+
+For development tools (pytest, ruff):
+
+```bash
+pip install -e .[dev]
+```
+
 ## Trust stores and TSL
 
 The PEM bundles derived from the AgID TSL (https://eidas.agid.gov.it/TL/TSL-IT.xml) are saved in:

@@ -10,9 +10,7 @@ Sigillum is a desktop application for digitally signing, timestamping, encryptin
 
 It supports credentials from files (PKCS#12) and hardware tokens via PKCS#11 (YubiKey, Bit4id Digital-DNA Key, smartcards via OpenSC), RFC 3161 timestamping (level T for signatures, standalone timestamp for files), even on qualified TSAs with HTTP Basic Auth, and chain validation against the imported AgID Trust List. locally.
 
-## Project Status
-
-Available Features:
+## Features
 
 - PAdES Level B and T Signature
 - CAdES Level B and T Signature (`.p7m` Enveloping)
@@ -65,12 +63,6 @@ pip install -U pip
 pip install -e .
 ```
 
-For development tools (pytest, ruff):
-
-```bash
-pip install -e .[dev]
-```
-
 ## Startup
 
 After installation:
@@ -78,7 +70,6 @@ After installation:
 ```bash
 sigillum # starts the GUI (default)
 sigillum --help # lists CLI subcommands
-sigillum gui # explicitly starts the GUI
 ```
 
 Or without an install script:
@@ -309,5 +300,8 @@ recovered = decrypt_asymmetric(blob, cred)
 
 ## License
 
-GPL-3.0-or-later.
+This program is released under the terms of the GNU General Public License (GNU GPL), either version 3.0, or (at your option) any later version.
+
+You can find a copy of the license in the file LICENSE.
+
 
