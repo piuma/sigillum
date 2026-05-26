@@ -32,6 +32,12 @@ Requires:       python3-gobject
 Requires:       gtk3
 Requires:       poppler-glib
 
+# Workaround for upstream endesive: its bundled PyPDF2_annotate imports
+# `attr` (the attrs library) but endesive's pyproject.toml doesn't declare
+# it. Once that's fixed upstream and reflected in python-endesive's spec,
+# this explicit Requires can be dropped.
+Requires:       python3-attrs
+
 # Recommend the open-source PKCS#11 drivers users will most likely need.
 Recommends:     opensc
 Recommends:     yubico-piv-tool

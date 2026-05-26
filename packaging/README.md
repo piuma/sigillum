@@ -119,51 +119,86 @@ Lo `.spec` nativo è in `packaging/fedora/sigillum.spec`, scritto secondo le
 [Fedora Packaging Guidelines](https://docs.fedoraproject.org/en-US/packaging-guidelines/)
 e [Python](https://docs.fedoraproject.org/en-US/packaging-guidelines/Python/):
 macro `%pyproject_*`, `%license`, `%check` con `pytest -m "not network and not hardware"`,
-`%autorelease`/`%autochangelog` (rpmautospec).
+`%autorelease`/`%autochangelog` (rpmautospec), `%forgemeta` per scaricare il
+sorgente da GitHub via tag.
 
 ### Prerequisiti
 
 ```bash
-sudo dnf install -y rpm-build rpmlint rpmautospec pyproject-rpm-macros \
-                    python3-hatchling python3-devel \
+sudo dnf install -y rpm-build rpmdevtools rpmlint rpmautospec \
+                    pyproject-rpm-macros python3-hatchling python3-devel \
                     desktop-file-utils libappstream-glib \
-                    fedpkg mock
+                    fedora-packager mock po4a gettext
+rpmdev-setuptree   # crea ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 ```
 
-### Build
+Se manca il locale `en_US.UTF-8` (rpmlint stampa
+`sh: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8)`):
 
 ```bash
-# 1. Crea il tarball della release (qualsiasi tag/commit):
-TAG=v0.1.0
-git archive --format=tar.gz --prefix=sigillum-${TAG#v}/ HEAD \
-    -o ~/rpmbuild/SOURCES/sigillum-${TAG#v}.tar.gz
-
-# 2. Lint dello spec (deve essere silenzioso):
-rpmlint packaging/fedora/sigillum.spec
-
-# 3. SRPM e RPM binario:
-rpmbuild -bs packaging/fedora/sigillum.spec
-rpmbuild -bb packaging/fedora/sigillum.spec
-```
-
-### Mock (chroot pulito, riproducibile)
-
-```bash
-sudo usermod -a -G mock $USER     # logout/login dopo la prima volta
-mock -r fedora-43-x86_64 --rebuild ~/rpmbuild/SRPMS/sigillum-*.src.rpm
+sudo dnf install glibc-langpack-en
 ```
 
 ### Dipendenza non in Fedora: `python3-endesive`
 
-`endesive` non è ancora in Fedora. Lo spec scaffold per pacchettizzarla è in
-`packaging/fedora/python-endesive.spec`. Build identica:
+`endesive` non è ancora in Fedora. Senza il suo RPM `dnf builddep` di
+sigillum fallisce con `python3dist(endesive) >= 2.17 is needed`. Lo spec
+scaffold è in `packaging/fedora/python-endesive.spec`; costruiscilo e
+installalo localmente **una volta**, poi resta installato fino a quando
+non aggiorni manualmente la versione upstream.
 
 ```bash
 spectool -g -R packaging/fedora/python-endesive.spec
-rpmbuild -ba packaging/fedora/python-endesive.spec
+sudo dnf builddep -y packaging/fedora/python-endesive.spec
+rpmbuild -bb packaging/fedora/python-endesive.spec
+sudo dnf install -y ~/rpmbuild/RPMS/noarch/python3-endesive-*.rpm
 ```
 
+Lo spec dichiara esplicitamente `Requires: python3-attrs` perché endesive
+impacchetta `PyPDF2_annotate` (Autodesk 2019) che importa `attr` senza
+dichiararlo nel pyproject upstream. Una volta che endesive sistema la
+sua metadata, questa dichiarazione potrà essere rimossa.
+
 Dettagli del processo di review Fedora in `packaging/fedora/README.md`.
+
+### Build di sigillum
+
+```bash
+# 1. (opzionale) Lint dello spec — deve essere 0 errors, 0 warnings.
+#    I warning "setlocale ... en_US.UTF-8" sono environmental, non spec.
+LC_ALL=C.UTF-8 rpmlint packaging/fedora/sigillum.spec
+
+# 2. Risolvi le BR (cryptography, asn1crypto, lxml, pykcs11, requests,
+#    pytest, ruff…) — gestite dalle macro %pyproject_buildrequires.
+sudo dnf builddep -y packaging/fedora/sigillum.spec
+
+# 3. Scarica il sorgente forgiato dal tag GitHub (`%forgemeta` lo trova
+#    a partire da Version: + tag in cima allo spec). Niente `git archive`
+#    manuale: lo spec NON usa il working tree locale.
+spectool -g -R packaging/fedora/sigillum.spec
+
+# 4. SRPM + RPM binario.
+rpmbuild -bs packaging/fedora/sigillum.spec
+rpmbuild -bb packaging/fedora/sigillum.spec
+```
+
+Il binario finale è in `~/rpmbuild/RPMS/noarch/sigillum-<ver>.fc<NN>.noarch.rpm`.
+
+### Mock (chroot pulito, riproducibile)
+
+Per riprodurre una build identica a quella dei buildd Fedora — utile per
+debug di problemi che si vedono solo in chroot vergini, e obbligatorio
+prima di un upload via fedpkg:
+
+```bash
+sudo usermod -a -G mock $USER     # logout/login la prima volta
+mock -r fedora-44-x86_64 --rebuild ~/rpmbuild/SRPMS/sigillum-*.src.rpm
+```
+
+`python3-endesive` deve essere stato già costruito separatamente e
+copiato nel `mock --chroot` (oppure pubblicato in un Copr che mock può
+consultare), altrimenti `dnf builddep` dentro il chroot fallirà come
+sopra.
 
 ## C) DEB (Debian / Ubuntu / Mint)
 
