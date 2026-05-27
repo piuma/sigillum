@@ -27,6 +27,13 @@ BuildRequires:  libappstream-glib
 BuildRequires:  gettext
 BuildRequires:  po4a
 
+# Needed by %%pyproject_check_import for the GUI modules: PyCairo and the
+# GTK3/Poppler typelibs (gtk3 pulls in gdk-pixbuf2 and pango as deps, which
+# provide the GdkPixbuf-2.0 and Pango-1.0 typelibs imported by gui/app.py).
+BuildRequires:  python3-cairo
+BuildRequires:  gtk3
+BuildRequires:  poppler-glib
+
 # Runtime GTK stack
 Requires:       python3-gobject
 Requires:       gtk3

@@ -127,8 +127,8 @@ sorgente da GitHub via tag.
 ```bash
 sudo dnf install -y rpm-build rpmdevtools rpmlint rpmautospec \
                     pyproject-rpm-macros python3-hatchling python3-devel \
-                    desktop-file-utils libappstream-glib \
-                    fedora-packager mock po4a gettext
+                    desktop-file-utils libappstream-glib make \
+                    fedora-packager mock po4a gettext python3-pytest python3-ruff
 rpmdev-setuptree   # crea ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 ```
 
@@ -177,7 +177,10 @@ sudo dnf builddep -y packaging/fedora/sigillum.spec
 #    manuale: lo spec NON usa il working tree locale.
 spectool -g -R packaging/fedora/sigillum.spec
 
-# 4. SRPM + RPM binario.
+# 4. Scarica le dipendenze
+dnf builddep packaging/fedora/sigillum.spec
+
+# 5. SRPM + RPM binario.
 rpmbuild -bs packaging/fedora/sigillum.spec
 rpmbuild -bb packaging/fedora/sigillum.spec
 ```
