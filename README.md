@@ -10,6 +10,8 @@ Sigillum is a desktop application for digitally signing, timestamping, encryptin
 
 It supports credentials from files (PKCS#12) and hardware tokens via PKCS#11 (YubiKey, Bit4id Digital-DNA Key, smartcards via OpenSC), RFC 3161 timestamping (level T for signatures, standalone timestamp for files), even on qualified TSAs with HTTP Basic Auth, and chain validation against the imported AgID Trust List. locally.
 
+![alt text](images/screenshot GUI.png "Sigillum GUI")
+
 ## Features
 
 - PAdES Level B and T Signature
