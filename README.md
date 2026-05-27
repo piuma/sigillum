@@ -207,13 +207,18 @@ Auto-detection proven on:
 - **Bit4id Digital-DNA Key** (CCIAA / InfoCamere / Aruba / Namirial token) — proprietary `libbit4xpki.so`, from Aruba Sign / InfoCamere Sign Desktop / Dike
 - Generic **CNS / CIE Smartcards** via `opensc-pkcs11.so` (OpenSC)
 
-Note: OpenSC 0.27 has a known bug with the ATMEL Athena CNS cert container — it sees keys but cannot read certificates. Sigillum uses the proprietary Bit4id driver if available (this is what `detect_tokens()` prefers if both are present). The scanned paths are in `src/sigillum/core/detection.py`.
-
 For live testing with YubiKey (requires hardware + PIN via env):
 
 ```bash
 SIGILLUM_PIN=<pin> .venv/bin/python tests/test_pkcs11_yubikey.py
 ```
+
+## Note on Italian CNS cards and OpenSC
+OpenSC cannot read the *qualified signing certificate* (DS) on most Italian CNS cards (Athena, IDEMIA, Bit4id JS, etc.): only the authentication certificate (CNS) is visible. The signing key/cert pair is protected by **Secure Messaging** with a static symmetric key embedded in the vendor's proprietary PKCS#11 module, and OpenSC has no way to derive it — `pkcs11-tool --list-objects` and `pkcs15-tool -D` will simply not show the DS object. Additionally, the DS object location is not standardised: every manufacturer chooses its own. This is tracked upstream in [OpenSC#2782](https://github.com/OpenSC/OpenSC/issues/2782) and is unlikely to be fixed without reverse-engineering each vendor's SM key.
+
+Practical consequence: to sign with an Italian CNS / firma qualificata you must install the **proprietary middleware** shipped with Aruba Sign / InfoCamere Sign Desktop / Dike (`libbit4xpki.so` and friends). Sigillum's auto detect token function already prefers the proprietary driver over OpenSC when both are present.
+
+We sincerely hope that the SM key can be extracted to allow OpenSC to work with Italian CNS and to prefer OpenSC to proprietary drivers.
 
 ## Standalone Timestamp (TSR / TSD)
 
