@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sigillum"
-version = "0.1.0"
+version = "0.2.0"
 description = "PAdES/CAdES/XAdES digital signing with hardware tokens and file certificates"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -38,9 +38,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/piumalab/sigillum"
-"Bug Tracker" = "https://github.com/piumalab/sigillum/issues"
-Changelog = "https://github.com/piumalab/sigillum/releases"
+Homepage = "https://github.com/piuma/sigillum"
+"Bug Tracker" = "https://github.com/piuma/sigillum/issues"
+Changelog = "https://github.com/piuma/sigillum/releases"
 
 [project.optional-dependencies]
 dev = [

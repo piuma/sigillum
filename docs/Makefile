@@ -43,7 +43,7 @@ $(POT): $(MASTER)
 	po4a-updatepo --format=man --master=$(MASTER) --po=$@ \
 	    --copyright-holder "Danilo Abbasciano" \
 	    --package-name $(PACKAGE) \
-	    --package-version 0.1.0 \
+	    --package-version 0.2.0 \
 	    --msgid-bugs-address danilo@piumalab.org
 
 po: pot
