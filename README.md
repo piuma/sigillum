@@ -56,9 +56,40 @@ Python dependencies (defined in `pyproject.toml`):
 
 ## Installation
 
-`PyGObject` is normally installed as a system package; To avoid duplication, use a virtualenv with `--system-site-packages`:
+`PyGObject` is normally installed as a system package, so the recommended setup is a virtualenv with `--system-site-packages` to avoid duplicating it.
+
+### From PyPI
 
 ```bash
+python3 -m venv --system-site-packages .venv
+source .venv/bin/activate
+pip install -U pip
+pip install sigillum
+```
+
+### From `.deb` / `.rpm` package
+
+Native packages are published as assets on every [GitHub Release](https://github.com/piuma/sigillum/releases). Pick the file matching your distro:
+
+```bash
+# Fedora / RHEL
+sudo dnf install ./sigillum-<VERSION>.fc44.noarch.rpm
+```
+
+```bash
+# Debian / Ubuntu / Mint
+sudo apt install ./sigillum_<VERSION>_all.deb
+```
+
+The packages declare all runtime dependencies (GTK 3, Poppler, `python3-endesive`, etc.) so no virtualenv is needed. To build the packages yourself instead of downloading them, see [`packaging/README.md`](packaging/README.md).
+
+### From source
+
+For development or to run the latest unreleased changes:
+
+```bash
+git clone https://github.com/piuma/sigillum.git
+cd sigillum
 python3 -m venv --system-site-packages .venv
 source .venv/bin/activate
 pip install -U pip
