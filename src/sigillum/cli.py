@@ -617,9 +617,11 @@ def _cmd_detect(args) -> int:
     from .core.detection import (
         detect_tokens, detect_usb_tokens, find_available_drivers, suggest_driver,
     )
+    from .core.settings import load_settings
 
-    drivers = find_available_drivers()
-    tokens = detect_tokens()
+    extra = load_settings().extra_pkcs11_search_paths
+    drivers = find_available_drivers(extra)
+    tokens = detect_tokens(extra)
     usb = detect_usb_tokens()
 
     if args.json:
@@ -718,6 +720,7 @@ def _cmd_config(args) -> int:
                 "pkcs11_library": settings.pkcs11_library,
                 "pkcs11_cert_id": settings.pkcs11_cert_id,
                 "pkcs11_cert_subject": settings.pkcs11_cert_subject,
+                "extra_pkcs11_search_paths": list(settings.extra_pkcs11_search_paths),
                 "tsa_url": settings.tsa_url,
                 "tsa_username": settings.tsa_username,
                 "tsa_password_set": bool(settings.tsa_password),
@@ -746,6 +749,10 @@ def _cmd_config(args) -> int:
             pos=settings.signature_position,
             logo=settings.signature_image or _("(none)"),
         ))
+        if settings.extra_pkcs11_search_paths:
+            print(_("Extra PKCS#11 search paths:"))
+            for d in settings.extra_pkcs11_search_paths:
+                print(f"  - {d}")
         print(_("Primary country: {cc}").format(cc=primary))
         print(_("Active for verify: {cc}").format(cc=", ".join(active)))
         if settings.tsl_imports:
@@ -801,6 +808,16 @@ def _cmd_config(args) -> int:
         else:
             return _err(_("Unknown country code: {cc}").format(cc=cc))
         changed = True
+    if getattr(args, "add_driver", None):
+        for p in args.add_driver:
+            if p and p not in settings.extra_pkcs11_search_paths:
+                settings.extra_pkcs11_search_paths.append(p)
+                changed = True
+    if getattr(args, "remove_driver", None):
+        for p in args.remove_driver:
+            if p in settings.extra_pkcs11_search_paths:
+                settings.extra_pkcs11_search_paths.remove(p)
+                changed = True
     if getattr(args, "active_countries", None) is not None:
         from .core.settings import LOTL_COUNTRIES
         raw = args.active_countries.strip()
@@ -989,6 +1006,14 @@ def build_parser() -> argparse.ArgumentParser:
                          help=_("comma-separated list of country codes to "
                                 "include in the verification trust store. "
                                 "Empty string falls back to the primary country."))
+    cfg_set.add_argument("--add-driver", dest="add_driver", metavar="PATH",
+                         action="append",
+                         help=_("add a directory (recursively scanned), glob, "
+                                "or file to the PKCS#11 autodetect search list. "
+                                "Tried before the built-in paths. Repeatable."))
+    cfg_set.add_argument("--remove-driver", dest="remove_driver", metavar="PATH",
+                         action="append",
+                         help=_("remove a previously added entry. Repeatable."))
     p_cfg.set_defaults(func=_cmd_config, action=None, json=False)
 
     # gui

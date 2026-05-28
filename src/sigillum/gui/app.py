@@ -669,6 +669,14 @@ class SettingsView(Gtk.Box):
         lib_row.pack_start(refresh, False, False, 0)
         box.pack_start(lib_row, False, False, 0)
 
+        # --- Extra search paths (autodetect fallback)
+        # Hidden by default. Revealed by _on_autodetect_token() when scanning
+        # finds nothing, or by _load_into_widgets() if Settings already
+        # contain user-supplied entries.
+        self._extra_search_paths: list[str] = []
+        self._extra_search_frame = self._build_extra_search_section()
+        box.pack_start(self._extra_search_frame, False, False, 0)
+
         box.pack_start(Gtk.Label(label=_("Certificate on the token:"), xalign=0),
                        False, False, 0)
         self._token_cert_combo = Gtk.ComboBoxText()
@@ -680,6 +688,94 @@ class SettingsView(Gtk.Box):
         self._token_cert_ids: list[str] = []
         self._token_cert_subjects: list[str] = []
         return box
+
+    def _build_extra_search_section(self) -> Gtk.Widget:
+        """Fallback panel: directories to scan when auto-detect finds nothing.
+
+        Each directory is searched recursively for ``*.so`` files by
+        ``find_available_drivers()`` (tried *before* the built-in paths).
+        Hidden by default — surface it only when the user actually needs
+        it, otherwise the Settings tab is noisier than necessary.
+        """
+        frame = Gtk.Frame()
+        frame.set_label(_("Auto-detect: extra search directories"))
+        frame.set_no_show_all(True)  # caller decides when to reveal
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        outer.set_margin_top(6)
+        outer.set_margin_bottom(6)
+        outer.set_margin_start(10)
+        outer.set_margin_end(10)
+
+        hint = Gtk.Label(xalign=0, wrap=True)
+        hint.set_markup(
+            _("<small>Add directories where Sigillum should recursively look "
+              "for a vendor PKCS#11 module when auto-detect fails. If you "
+              "already know the exact <tt>.so</tt> file, type it in the "
+              "<b>PKCS#11 driver</b> field above instead.</small>")
+        )
+        outer.pack_start(hint, False, False, 0)
+
+        self._extra_search_list = Gtk.ListBox()
+        self._extra_search_list.set_selection_mode(Gtk.SelectionMode.NONE)
+        outer.pack_start(self._extra_search_list, False, False, 0)
+
+        add_btn = Gtk.Button.new_with_label(_("＋ Add directory…"))
+        add_btn.connect("clicked", self._on_add_extra_search_clicked)
+        add_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        add_row.pack_start(add_btn, False, False, 0)
+        outer.pack_start(add_row, False, False, 0)
+
+        frame.add(outer)
+        # Children must be ready to show as soon as the frame is revealed.
+        outer.show_all()
+        return frame
+
+    def _refresh_extra_search_list(self) -> None:
+        for child in list(self._extra_search_list.get_children()):
+            self._extra_search_list.remove(child)
+        for path in self._extra_search_paths:
+            row = Gtk.ListBoxRow()
+            hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            hbox.pack_start(Gtk.Label(label=path, xalign=0, hexpand=True,
+                                      ellipsize=Pango.EllipsizeMode.MIDDLE),
+                            True, True, 0)
+            rm = Gtk.Button.new_from_icon_name("list-remove-symbolic",
+                                               Gtk.IconSize.BUTTON)
+            rm.set_tooltip_text(_("Remove this directory"))
+            rm.connect("clicked", self._on_remove_extra_search, path)
+            hbox.pack_start(rm, False, False, 0)
+            row.add(hbox)
+            self._extra_search_list.add(row)
+        self._extra_search_list.show_all()
+
+    def _reveal_extra_search_section(self) -> None:
+        self._extra_search_frame.set_no_show_all(False)
+        self._extra_search_frame.show()
+
+    def _on_add_extra_search_clicked(self, _button):
+        dlg = Gtk.FileChooserDialog(
+            title=_("Select a directory to scan for PKCS#11 drivers"),
+            transient_for=self._parent,
+            action=Gtk.FileChooserAction.SELECT_FOLDER,
+        )
+        dlg.add_buttons(
+            _("Cancel"), Gtk.ResponseType.CANCEL,
+            _("Add"), Gtk.ResponseType.OK,
+        )
+        try:
+            if dlg.run() == Gtk.ResponseType.OK:
+                path = dlg.get_filename()
+                if path and path not in self._extra_search_paths:
+                    self._extra_search_paths.append(path)
+                    self._refresh_extra_search_list()
+        finally:
+            dlg.destroy()
+
+    def _on_remove_extra_search(self, _button, path: str):
+        if path in self._extra_search_paths:
+            self._extra_search_paths.remove(path)
+            self._refresh_extra_search_list()
 
     # ----- event handlers -----
 
@@ -721,14 +817,18 @@ class SettingsView(Gtk.Box):
         while Gtk.events_pending():
             Gtk.main_iteration_do(False)
         try:
-            tokens = detect_tokens()
+            tokens = detect_tokens(self._extra_search_paths)
         except Exception as ex:  # noqa: BLE001
             self._detect_status.set_markup("")
             _show_error(self._parent, _("Scan failed: {ex}").format(ex=ex))
             return
 
         if not tokens:
-            available = find_available_drivers()
+            available = find_available_drivers(self._extra_search_paths)
+            # Autodetect failed: surface the "extra search directories" panel
+            # so the user has somewhere to point us at without rebuilding
+            # the Settings tab.
+            self._reveal_extra_search_section()
             # We didn't find a working PKCS#11 driver — look at the USB bus
             # to see if any *recognised* token is plugged in for which we
             # know how to fetch a driver.
@@ -737,7 +837,10 @@ class SettingsView(Gtk.Box):
                 self._detect_status.set_markup(
                     _("<span foreground='#c33'>Missing driver for the detected token.</span>")
                 )
-                self._show_driver_help(usb_tokens)
+                if self._show_driver_help(usb_tokens):
+                    # User added a search directory in the popup — try again.
+                    self._on_autodetect_token(None)
+                    return
             else:
                 self._detect_status.set_markup(
                     _("<span foreground='#c33'>No token detected.</span> "
@@ -773,12 +876,19 @@ class SettingsView(Gtk.Box):
             )
         )
 
-    def _show_driver_help(self, usb_tokens):
+    # Custom response id used when the user picks a directory from inside
+    # the "Missing driver" popup — tells _on_autodetect_token to re-scan.
+    _RETRY_AUTODETECT = 1
+
+    def _show_driver_help(self, usb_tokens) -> bool:
         """Pop a dialog explaining which driver is needed for each USB token.
 
         For open-source drivers we show the install command for the current
         distro. For proprietary drivers (Bit4id, SafeNet) we can't bundle the
         binary, so we list the vendor download pages (clickable links).
+
+        Returns ``True`` if the user added a search directory and the caller
+        should re-run auto-detect; ``False`` if they just closed the dialog.
         """
         from gi.repository import Pango as _Pango  # local import: top-level done elsewhere
 
@@ -856,9 +966,55 @@ class SettingsView(Gtk.Box):
             frame.add(box)
             content.pack_start(frame, False, False, 0)
 
+        # "Already installed elsewhere?" — quick shortcut to add a directory
+        # to the autodetect search list without leaving the dialog. Common
+        # case: the driver is on disk but in a path Sigillum doesn't know
+        # about (vendor installer in $HOME, custom prefix, etc.).
+        content.pack_start(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL),
+                           False, False, 4)
+        installed = Gtk.Label(xalign=0, wrap=True)
+        installed.set_markup(
+            _("<b>Driver already installed in a non-standard location?</b>\n"
+              "<small>Point Sigillum at a directory — it will be scanned "
+              "recursively for <tt>.so</tt> files before the built-in paths.</small>")
+        )
+        content.pack_start(installed, False, False, 0)
+        add_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        add_dir_btn = Gtk.Button.new_with_label(_("＋ Add directory and re-scan…"))
+        add_dir_btn.connect("clicked", self._on_quick_add_search_dir, dlg)
+        add_row.pack_start(add_dir_btn, False, False, 0)
+        content.pack_start(add_row, False, False, 0)
+
         dlg.show_all()
-        dlg.run()
+        result = dlg.run()
         dlg.destroy()
+        return result == self._RETRY_AUTODETECT
+
+    def _on_quick_add_search_dir(self, _button, parent_dlg: Gtk.Dialog):
+        """File chooser opened from the "Missing driver" popup. On success,
+        appends the directory to the in-memory search list, refreshes the
+        Settings panel, and closes the popup with RETRY so auto-detect
+        runs again immediately."""
+        fc = Gtk.FileChooserDialog(
+            title=_("Select a directory to scan for PKCS#11 drivers"),
+            transient_for=parent_dlg,
+            action=Gtk.FileChooserAction.SELECT_FOLDER,
+        )
+        fc.add_buttons(
+            _("Cancel"), Gtk.ResponseType.CANCEL,
+            _("Add and re-scan"), Gtk.ResponseType.OK,
+        )
+        try:
+            if fc.run() == Gtk.ResponseType.OK:
+                path = fc.get_filename()
+                if path and path not in self._extra_search_paths:
+                    self._extra_search_paths.append(path)
+                    self._refresh_extra_search_list()
+                    self._reveal_extra_search_section()
+                if path:
+                    parent_dlg.response(self._RETRY_AUTODETECT)
+        finally:
+            fc.destroy()
 
     def _choose_token(self, tokens):
         """Modal chooser when multiple distinct tokens are detected."""
@@ -1211,6 +1367,14 @@ class SettingsView(Gtk.Box):
         # set_filename / unselect_all don't fire `file-set`, so refresh manually.
         self._refresh_preview()
 
+        # Extra search paths (autodetect fallback). Reveal the panel only if
+        # the user already configured something — otherwise it stays hidden
+        # until autodetect fails.
+        self._extra_search_paths = list(s.extra_pkcs11_search_paths)
+        self._refresh_extra_search_list()
+        if self._extra_search_paths:
+            self._reveal_extra_search_section()
+
         # TSL age — for the primary country
         self._refresh_tsl_age(s.last_import_for(s.effective_country()))
         # Multi-country panel: dropdown + per-row list.
@@ -1232,6 +1396,7 @@ class SettingsView(Gtk.Box):
         s.tsa_username = self._tsa_username.get_text()
         s.tsa_password = self._tsa_password.get_text()
         s.signature_image = self._vis_sig_image.get_filename() or ""
+        s.extra_pkcs11_search_paths = list(self._extra_search_paths)
 
         if self._radio_file.get_active():
             cert = self._cert_chooser.get_filename()

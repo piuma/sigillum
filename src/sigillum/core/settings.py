@@ -87,6 +87,11 @@ class Settings:
     # Visible signature preferences (PAdES only)
     signature_position: str = "bottom-right"
     signature_image: str = ""
+    # User-supplied search paths consulted *before* the built-in
+    # SYSTEM_DRIVER_PATHS / USER_DRIVER_GLOBS during autodetect. Each entry
+    # may be a directory (scanned recursively for `*.so*`), a glob, or an
+    # exact file path. `~` and `*` are expanded.
+    extra_pkcs11_search_paths: list[str] = field(default_factory=list)
 
     def is_configured(self) -> bool:
         if self.source == "file":
@@ -168,6 +173,23 @@ def _parse_active_countries(raw) -> list[str]:
     return [c.upper() for c in raw if isinstance(c, str) and c.isalpha()]
 
 
+def _parse_search_paths(raw) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    # Preserve order, drop duplicates and empty/non-string entries.
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in raw:
+        if not isinstance(item, str):
+            continue
+        s = item.strip()
+        if not s or s in seen:
+            continue
+        seen.add(s)
+        out.append(s)
+    return out
+
+
 def load_settings(path: Path | None = None) -> Settings:
     """Load settings from disk; return defaults if missing or malformed."""
     p = path or settings_path()
@@ -212,6 +234,9 @@ def load_settings(path: Path | None = None) -> Settings:
         tsl_active_countries=tsl_active,
         signature_position=str(data.get("signature_position", "bottom-right")),
         signature_image=str(data.get("signature_image", "")),
+        extra_pkcs11_search_paths=_parse_search_paths(
+            data.get("extra_pkcs11_search_paths") or data.get("extra_pkcs11_drivers")
+        ),
     )
 
 

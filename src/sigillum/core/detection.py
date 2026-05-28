@@ -233,31 +233,56 @@ def _label_for(path: str) -> str:
     return Path(path).name
 
 
-def find_available_drivers() -> list[str]:
+def find_available_drivers(extra: Sequence[str] | None = None) -> list[str]:
     """Return every known PKCS#11 driver `.so` that exists on this machine.
 
-    Order matches `SYSTEM_DRIVER_PATHS` then expanded `USER_DRIVER_GLOBS`,
-    deduplicated by absolute path. Symlinks are resolved so two entries
-    pointing to the same file aren't tried twice.
+    Order: *extra* (user-configured, highest priority), then
+    ``SYSTEM_DRIVER_PATHS``, then expanded ``USER_DRIVER_GLOBS``. Entries
+    are deduplicated by resolved absolute path so two entries pointing to
+    the same file aren't tried twice.
+
+    Each *extra* entry may be:
+      * a **directory** — scanned recursively for ``*.so`` / ``*.so.*``;
+      * a **glob** (``*``, ``?``, ``[``) — expanded with :mod:`glob`;
+      * an **exact file path**.
+    ``~`` is always expanded.
     """
     seen: set[str] = set()
     out: list[str] = []
+
+    def _accept(path: str) -> None:
+        if not Path(path).is_file():
+            return
+        real = str(Path(path).resolve())
+        if real in seen:
+            return
+        seen.add(real)
+        out.append(path)
+
+    def _add_pattern(pattern: str) -> None:
+        for match in glob.glob(str(Path(pattern).expanduser())):
+            _accept(match)
+
+    def _add_extra(entry: str) -> None:
+        p = Path(entry).expanduser()
+        if p.is_dir():
+            # Recursive scan for shared objects. Sorted for deterministic order.
+            for match in sorted(p.rglob("*.so*")):
+                _accept(str(match))
+        else:
+            _add_pattern(entry)
+
+    for entry in (extra or ()):
+        _add_extra(entry)
     for path in SYSTEM_DRIVER_PATHS:
         if Path(path).is_file():
-            real = str(Path(path).resolve())
-            if real not in seen:
-                seen.add(real)
-                out.append(path)
+            _accept(path)
     for pattern in USER_DRIVER_GLOBS:
-        for match in glob.glob(str(Path(pattern).expanduser())):
-            real = str(Path(match).resolve())
-            if real not in seen:
-                seen.add(real)
-                out.append(match)
+        _add_pattern(pattern)
     return out
 
 
-def detect_tokens() -> list[DetectedToken]:
+def detect_tokens(extra: Sequence[str] | None = None) -> list[DetectedToken]:
     """Try every available driver; report tokens that expose ≥1 certificate.
 
     A driver that loads cleanly but reports zero certs is silently skipped:
@@ -265,10 +290,14 @@ def detect_tokens() -> list[DetectedToken]:
     the wrong driver hides the certs. The caller can fall back to the
     full list from `find_available_drivers()` and let the user pick
     manually if `detect_tokens()` returns empty.
+
+    *extra* is forwarded to ``find_available_drivers`` and is intended to
+    receive ``Settings.extra_pkcs11_drivers`` so user-configured paths win
+    over the built-in lists.
     """
     out: list[DetectedToken] = []
     seen_fingerprints: set[tuple[str, ...]] = set()
-    for lib in find_available_drivers():
+    for lib in find_available_drivers(extra):
         try:
             provider = PKCS11Provider(lib)
             certs = list(provider.list_certificates())
