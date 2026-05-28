@@ -250,7 +250,80 @@ class SettingsView(Gtk.Box):
         self._save_button.connect("clicked", self._on_save_clicked)
         self.pack_start(self._save_button, False, False, 0)
 
+        # --- Unsaved-changes tracking ---
+        # `_dirty` is flipped by `_mark_dirty` whenever an editable widget
+        # changes. Reset to False after a successful save or a reload from
+        # disk. `confirm_leave()` reads it when the user switches tab.
+        self._dirty = False
+        self._wire_dirty_signals()
+
         self.refresh_from_settings()
+
+    def _mark_dirty(self, *_args) -> None:
+        self._dirty = True
+
+    def _wire_dirty_signals(self) -> None:
+        """Connect ``_mark_dirty`` to every editable widget whose state is
+        committed by the Save button. Widgets that persist on change (TSL
+        primary country combo, active-country checkboxes) are intentionally
+        left out — they don't produce unsaved state."""
+        self._radio_file.connect("toggled", self._mark_dirty)
+        self._radio_token.connect("toggled", self._mark_dirty)
+        self._cert_chooser.connect("file-set", self._mark_dirty)
+        self._vis_sig_image.connect("file-set", self._mark_dirty)
+        for entry in (self._pkcs11_lib, self._tsa_url,
+                      self._tsa_username, self._tsa_password):
+            entry.connect("changed", self._mark_dirty)
+        self._token_cert_combo.connect("changed", self._mark_dirty)
+        self._tsa_preset_combo.connect("changed", self._mark_dirty)
+
+    def confirm_leave(self) -> bool:
+        """Called when the user tries to leave the Settings tab.
+
+        Returns ``True`` if the switch should proceed, ``False`` to keep the
+        user on Settings (i.e. they cancelled). Pops a Save/Discard/Cancel
+        dialog only if there are unsaved changes.
+        """
+        if not self._dirty:
+            return True
+        dlg = Gtk.MessageDialog(
+            transient_for=self._parent,
+            modal=True,
+            message_type=Gtk.MessageType.QUESTION,
+            text=_("Unsaved changes"),
+            secondary_text=_(
+                "You have unsaved changes in Settings. "
+                "Save them before leaving?"
+            ),
+        )
+        dlg.add_buttons(
+            _("Discard"), Gtk.ResponseType.NO,
+            _("Cancel"), Gtk.ResponseType.CANCEL,
+            _("Save"), Gtk.ResponseType.YES,
+        )
+        dlg.set_default_response(Gtk.ResponseType.YES)
+        response = dlg.run()
+        dlg.destroy()
+        if response == Gtk.ResponseType.YES:
+            s = self._collect()
+            if s is None:
+                # Validation error already shown by _collect — stay here so
+                # the user can fix it.
+                return False
+            try:
+                save_settings(s)
+            except OSError as ex:
+                _show_error(self._parent,
+                            _("Could not save settings: {ex}").format(ex=ex))
+                return False
+            self._dirty = False
+            return True
+        if response == Gtk.ResponseType.NO:
+            # Discard: reload widgets from disk and let the switch proceed.
+            self._load_into_widgets(load_settings())
+            self._dirty = False
+            return True
+        return False  # Cancel / dialog closed
 
     def refresh_from_settings(self):
         """Re-read settings.json and sync all widgets to the saved state.
@@ -769,6 +842,7 @@ class SettingsView(Gtk.Box):
                 if path and path not in self._extra_search_paths:
                     self._extra_search_paths.append(path)
                     self._refresh_extra_search_list()
+                    self._mark_dirty()
         finally:
             dlg.destroy()
 
@@ -776,6 +850,7 @@ class SettingsView(Gtk.Box):
         if path in self._extra_search_paths:
             self._extra_search_paths.remove(path)
             self._refresh_extra_search_list()
+            self._mark_dirty()
 
     # ----- event handlers -----
 
@@ -1011,6 +1086,7 @@ class SettingsView(Gtk.Box):
                     self._extra_search_paths.append(path)
                     self._refresh_extra_search_list()
                     self._reveal_extra_search_section()
+                    self._mark_dirty()
                 if path:
                     parent_dlg.response(self._RETRY_AUTODETECT)
         finally:
@@ -1328,6 +1404,7 @@ class SettingsView(Gtk.Box):
         except OSError as ex:
             _show_error(self._parent, _("Could not save settings: {ex}").format(ex=ex))
             return
+        self._dirty = False
         self._device_status.set_markup(
             _("<span foreground='#2a7'>✓ Saved</span>: {value}").format(value=s.describe())
         )
@@ -1381,6 +1458,11 @@ class SettingsView(Gtk.Box):
         self._rebuild_tsl_country_list()
 
         self._device_status.set_text(_("Configured: {value}").format(value=s.describe()))
+
+        # Programmatic widget mutations above fire `changed`/`toggled`
+        # signals, which would otherwise flip `_dirty` on every refresh.
+        # Reset the flag here so it only reflects real user input.
+        self._dirty = False
 
     def _collect(self) -> Settings | None:
         """Build a Settings from the UI controls.
@@ -2868,6 +2950,12 @@ class SigillumWindow(Gtk.ApplicationWindow):
         ]
         for view, name, title, _icon in tabs:
             self._stack.add_titled(view, name, title)
+        # Track the previously-selected tab so we can intercept "leaving
+        # Settings with unsaved changes" in _on_tab_changed.
+        self._prev_tab: str = self._stack.get_visible_child_name() or "sign"
+        # Set when we programmatically restore the stack after a cancelled
+        # leave — prevents the resulting notify from re-firing the dialog.
+        self._reverting_tab = False
         # Refresh tabs that depend on settings whenever the user returns.
         self._stack.connect("notify::visible-child", self._on_tab_changed)
 
@@ -2892,6 +2980,19 @@ class SigillumWindow(Gtk.ApplicationWindow):
 
     def _on_tab_changed(self, stack, _pspec):
         name = stack.get_visible_child_name()
+        if self._reverting_tab:
+            # We just restored the previous tab after a cancelled leave —
+            # swallow the resulting notify without running the dialog again.
+            self._reverting_tab = False
+            self._prev_tab = name
+            return
+        # Leaving Settings with unsaved changes → ask Save / Discard / Cancel.
+        if self._prev_tab == "settings" and name != "settings":
+            if not self._settings_view.confirm_leave():
+                self._reverting_tab = True
+                self._stack.set_visible_child_name("settings")
+                return
+        self._prev_tab = name
         if name == "sign":
             self._sign_view.refresh_from_settings()
         elif name == "mark":
