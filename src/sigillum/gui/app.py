@@ -21,7 +21,7 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
 gi.require_version("Pango", "1.0")
-from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, Pango  # noqa: E402
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango  # noqa: E402
 
 from sigillum.i18n import _
 from sigillum.core.credentials import FileProvider, PKCS11Provider
@@ -2720,6 +2720,11 @@ class SigillumWindow(Gtk.ApplicationWindow):
         self._tsl_refresh_active = False
         GLib.idle_add(self._maybe_auto_refresh_tsl)
 
+    def set_active_tab(self, name: str) -> None:
+        """Switch the main stack to the tab with the given name. Used by the
+        ``app.tab`` action (bound to Ctrl+1…6 / Ctrl+,)."""
+        self._stack.set_visible_child_name(name)
+
     def _on_tab_changed(self, stack, _pspec):
         name = stack.get_visible_child_name()
         if name == "sign":
@@ -2816,6 +2821,29 @@ class SigillumWindow(Gtk.ApplicationWindow):
 class SigillumApp(Gtk.Application):
     def __init__(self):
         super().__init__(application_id="io.github.sigillum")
+
+    def do_startup(self):
+        Gtk.Application.do_startup(self)
+
+        quit_action = Gio.SimpleAction.new("quit", None)
+        quit_action.connect("activate", lambda *_: self.quit())
+        self.add_action(quit_action)
+        self.set_accels_for_action("app.quit", ["<Primary>Q", "<Primary>W"])
+
+        tab_action = Gio.SimpleAction.new("tab", GLib.VariantType.new("s"))
+        tab_action.connect("activate", self._on_tab_action)
+        self.add_action(tab_action)
+        self.set_accels_for_action("app.tab::sign",     ["<Primary>1"])
+        self.set_accels_for_action("app.tab::verify",   ["<Primary>2"])
+        self.set_accels_for_action("app.tab::mark",     ["<Primary>3"])
+        self.set_accels_for_action("app.tab::encrypt",  ["<Primary>4"])
+        self.set_accels_for_action("app.tab::decrypt",  ["<Primary>5"])
+        self.set_accels_for_action("app.tab::settings", ["<Primary>6", "<Primary>comma"])
+
+    def _on_tab_action(self, _action, param):
+        win = self.props.active_window
+        if win is not None:
+            win.set_active_tab(param.get_string())
 
     def do_activate(self):
         win = self.props.active_window
