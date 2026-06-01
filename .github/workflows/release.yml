@@ -129,6 +129,11 @@ jobs:
           # only, not required for the binary).
           sed -i 's/^license = "MIT"$/license = { text = "MIT" }/' pyproject.toml
           sed -i '/^license-files = /d' pyproject.toml
+          # Constrain package auto-discovery to `endesive*` so the debian/
+          # dir we are about to drop in does not get picked up as a second
+          # top-level package.
+          printf '\n[tool.setuptools.packages.find]\ninclude = ["endesive*"]\n' \
+              >> pyproject.toml
           cp -r $GITHUB_WORKSPACE/packaging/python3-endesive/debian .
           dpkg-buildpackage -us -uc -b
           ls -la ..
