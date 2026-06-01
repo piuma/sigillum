@@ -171,7 +171,7 @@ Steps:
 
 1. Bump the version in all files (the only double-check worth doing — the workflow will fail the version check if one is misaligned):
   - pyproject.toml => version = "0.2.1"
-  - src/sigillum/__init__.py → __version__ = "0.2.1"
+  - src/sigillum/__init__.py => __version__ = "0.2.1"
   - docs/Makefile => --package-version 0.2.1
   - docs/sigillum.1 => sigillum 0.2.1
   - packaging/fedora/sigillum.spec → Version: 0.2.1 (was still 0.1.0)

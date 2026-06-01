@@ -60,6 +60,15 @@
   </provides>
 
   <releases>
+    <release version="0.2.1" date="2026-05-27">
+      <description>
+        <p>GUI keyboard shortcuts (Ctrl+Q/W to quit, Ctrl+1..6 to switch tab,
+           Ctrl+, for Settings). User-configurable PKCS#11 driver search
+           paths with auto-detect quick-add. Confirm dialog on leaving
+           Settings with unsaved changes. Published to PyPI and packaged
+           as .deb/.rpm via GitHub Actions.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-05-19">
       <description>
         <p>Initial release.</p>

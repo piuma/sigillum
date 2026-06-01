@@ -5,7 +5,7 @@
 %global tag v%{version}
 
 Name:           %{pypi_name}
-Version:        0.1.0
+Version:        0.2.1
 %forgemeta -i
 Release:        %autorelease
 Summary:        Italian eIDAS digital signature tool (PAdES/CAdES/XAdES)

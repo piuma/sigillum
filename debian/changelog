@@ -1,3 +1,20 @@
+sigillum (0.2.1-1) unstable; urgency=medium
+
+  * GUI keyboard shortcuts: Ctrl+Q / Ctrl+W to quit, Ctrl+1..6 to switch
+    tab, Ctrl+, to open Settings.
+  * Auto-detect PKCS#11 token: extra search directories configurable
+    from Settings or via `config set --add-driver`, with a quick-add
+    shortcut surfaced inside the "Missing token driver" popup.
+  * Settings tab: prompt to save / discard / cancel when leaving with
+    unsaved changes.
+  * Document the OpenSC limitation on Italian CNS qualified signing
+    certificates (Secure Messaging key embedded in vendor drivers, see
+    upstream issue OpenSC#2782).
+  * Project: published to PyPI; .deb/.rpm built and released via
+    GitHub Actions on every `v*` tag.
+
+ -- Danilo Abbasciano <danilo@piumalab.org>  Wed, 27 May 2026 15:00:00 +0200
+
 sigillum (0.1.0-1) unstable; urgency=medium
 
   * Initial release.
