@@ -32,7 +32,7 @@ jobs:
       - name: Install build dependencies
         run: |
           dnf install -y --setopt=install_weak_deps=False \
-            git rpm-build rpmdevtools fedora-packager po4a gettext \
+            git make rpm-build rpmdevtools fedora-packager po4a gettext \
             python3-devel python3-pip python3-pytest python3-ruff \
             python3-hatchling python3-wheel pyproject-rpm-macros \
             desktop-file-utils libappstream-glib python3-cairo gtk3 \
