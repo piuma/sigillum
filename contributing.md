@@ -162,3 +162,22 @@ test_tsa_live.py # T-level signing against FreeTSA (network)
 test_timestamp.py # Standalone TSR + TSD timestamp via FreeTSA (network)
 test_pkcs11_yubikey.py # Signing with a real YubiKey (hardware)
 ```
+
+## Steps to create new release
+
+For example if v0.2.1 is the new version, the sequence is:
+
+Steps:
+
+1. Bump the version in all files (the only double-check worth doing — the workflow will fail the version check if one is misaligned):
+  - pyproject.toml => version = "0.2.1"
+  - src/sigillum/__init__.py → __version__ = "0.2.1"
+  - docs/Makefile => --package-version 0.2.1
+  - docs/sigillum.1 => sigillum 0.2.1
+  - packaging/fedora/sigillum.spec → Version: 0.2.1 (was still 0.1.0)
+  - debian/changelog => new sigillum entry (0.2.1-1) ... (was still 0.1.0-1)
+  - (opt.) packaging/flatpak/io.github.sigillum.metainfo.xml => new <release version="0.2.1" date="...">
+2. Commit + tag v0.2.1.
+3. Push the commit and tag => automatically triggers the workflow.
+4. GitHub Actions: The pypi job will pause pending approval (pypi environment with required reviewer). You approve by clicking "Review deployments" on the workflow page.
+5. Draft release: As soon as the rpm and deb are finished, you'll find a draft at https://github.com/piuma/sigillum/releases with the 4 assets (sigillum-*.rpm, python3-endesive-*.rpm, sigillum_*.deb, python3-endesive_*.deb). Review it and click **Publish release**.
