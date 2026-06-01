@@ -140,7 +140,14 @@ jobs:
           apt-get install -y /tmp/endesive-build/python3-endesive_*.deb
 
       - name: Build sigillum .deb
-        run: dpkg-buildpackage -us -uc -b
+        run: |
+          # Bookworm's hatchling (~1.18) trips on the `Python :: 3.13`
+          # classifier because its known-classifiers list predates that
+          # release. The classifier is informational, so drop it for the
+          # Bookworm build only; PyPI/RPM keep it via the unmodified
+          # pyproject.toml.
+          sed -i '/"Programming Language :: Python :: 3\.13"/d' pyproject.toml
+          dpkg-buildpackage -us -uc -b
 
       - name: Collect DEB artifacts
         run: |
