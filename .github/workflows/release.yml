@@ -1,0 +1,204 @@
+# Build .rpm (Fedora) and .deb (Debian) packages on every `v*` tag push,
+# then attach them to a draft GitHub Release that the maintainer reviews
+# and publishes manually.
+#
+# Assumptions about the tag commit:
+#   - pyproject.toml `version` == tag (sans the leading `v`)
+#   - src/sigillum/__init__.py `__version__` == tag
+#   - packaging/fedora/sigillum.spec `Version:` == tag
+#   - debian/changelog top entry == `sigillum (<tag>-1) ...`
+# A version-consistency check fails fast if any of the above are out of sync.
+
+name: Release packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # softprops/action-gh-release needs this to create the draft
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Fedora RPM — builds python3-endesive first (not in Fedora repos), installs
+  # it, then builds sigillum from the same checkout.
+  # ---------------------------------------------------------------------------
+  rpm:
+    name: Build RPM (Fedora 44)
+    runs-on: ubuntu-latest
+    container: fedora:44
+    steps:
+      - name: Install build dependencies
+        run: |
+          dnf install -y --setopt=install_weak_deps=False \
+            git rpm-build rpmdevtools fedora-packager po4a gettext \
+            python3-devel python3-pytest python3-ruff python3-hatchling \
+            pyproject-rpm-macros desktop-file-utils libappstream-glib \
+            python3-cairo gtk3 poppler-glib python3-pillow python3-pykcs11 \
+            python3-requests python3-paramiko python3-attrs python3-certifi \
+            python3-fonttools python3-cryptography python3-asn1crypto \
+            python3-lxml python3-gobject
+
+      - uses: actions/checkout@v4
+
+      - name: Verify tag matches packaged version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          SPEC_VER=$(awk '/^Version:/ {print $2}' packaging/fedora/sigillum.spec)
+          PYPROJ_VER=$(awk -F'"' '/^version/ {print $2}' pyproject.toml)
+          echo "tag=$TAG  spec=$SPEC_VER  pyproject=$PYPROJ_VER"
+          [ "$TAG" = "$SPEC_VER" ]    || { echo "spec/tag mismatch"; exit 1; }
+          [ "$TAG" = "$PYPROJ_VER" ] || { echo "pyproject/tag mismatch"; exit 1; }
+
+      - name: Build python3-endesive RPM
+        run: |
+          rpmdev-setuptree
+          spectool -g -R packaging/fedora/python-endesive.spec
+          rpmbuild -bb packaging/fedora/python-endesive.spec
+          dnf install -y ~/rpmbuild/RPMS/noarch/python3-endesive-*.rpm
+
+      - name: Build sigillum RPM
+        run: |
+          spectool -g -R packaging/fedora/sigillum.spec
+          rpmbuild -bb packaging/fedora/sigillum.spec
+
+      - name: Collect RPM artifacts
+        run: |
+          mkdir -p dist-rpm
+          cp ~/rpmbuild/RPMS/noarch/sigillum-*.rpm dist-rpm/
+          cp ~/rpmbuild/RPMS/noarch/python3-endesive-*.rpm dist-rpm/
+          ls -la dist-rpm/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm
+          path: dist-rpm/*.rpm
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Debian DEB — same shape: build python3-endesive .deb from the upstream
+  # tarball + the debian/ template shipped with sigillum, install it, then
+  # build sigillum.
+  # ---------------------------------------------------------------------------
+  deb:
+    name: Build DEB (Debian 12)
+    runs-on: ubuntu-latest
+    container: debian:bookworm-slim
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            git curl ca-certificates build-essential devscripts debhelper \
+            dh-python pybuild-plugin-pyproject python3-all python3-setuptools \
+            python3-hatchling python3-pil python3-paramiko python3-wheel \
+            python3-cryptography python3-asn1crypto python3-lxml \
+            python3-pykcs11 python3-requests python3-attr python3-certifi \
+            python3-fonttools python3-gi gir1.2-gtk-3.0 gir1.2-poppler-0.18 \
+            po4a gettext
+
+      - uses: actions/checkout@v4
+
+      - name: Verify tag matches packaged version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          DEB_VER=$(dpkg-parsechangelog -l debian/changelog -S Version | sed 's/-.*//')
+          PYPROJ_VER=$(awk -F'"' '/^version/ {print $2}' pyproject.toml)
+          echo "tag=$TAG  debian/changelog=$DEB_VER  pyproject=$PYPROJ_VER"
+          [ "$TAG" = "$DEB_VER" ]    || { echo "debian changelog/tag mismatch"; exit 1; }
+          [ "$TAG" = "$PYPROJ_VER" ] || { echo "pyproject/tag mismatch"; exit 1; }
+
+      - name: Build python3-endesive .deb
+        run: |
+          # Read the version from the endesive packaging changelog so this
+          # workflow keeps working when endesive is bumped.
+          ENDESIVE_VER=$(dpkg-parsechangelog \
+              -l packaging/python3-endesive/debian/changelog -S Version | sed 's/-.*//')
+          echo "Building python3-endesive $ENDESIVE_VER"
+          mkdir -p /tmp/endesive-build
+          cd /tmp/endesive-build
+          curl -sSL -o endesive_${ENDESIVE_VER}.orig.tar.gz \
+              https://github.com/m32/endesive/archive/refs/tags/v${ENDESIVE_VER}.tar.gz
+          tar xf endesive_${ENDESIVE_VER}.orig.tar.gz
+          cd endesive-${ENDESIVE_VER}
+          cp -r $GITHUB_WORKSPACE/packaging/python3-endesive/debian .
+          dpkg-buildpackage -us -uc -b
+          ls -la ..
+          apt-get install -y /tmp/endesive-build/python3-endesive_*.deb
+
+      - name: Build sigillum .deb
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Collect DEB artifacts
+        run: |
+          mkdir -p dist-deb
+          # dpkg-buildpackage drops artefacts in the parent of the source dir.
+          cp ../sigillum_*.deb dist-deb/
+          cp /tmp/endesive-build/python3-endesive_*.deb dist-deb/
+          ls -la dist-deb/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: dist-deb/*.deb
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Publish to PyPI via Trusted Publishing (OIDC). No token: PyPI trusts this
+  # specific workflow on this repo, configured once at:
+  #   https://pypi.org/manage/project/sigillum/settings/publishing/
+  # with publisher = (owner: piuma, repo: sigillum, workflow: release.yml,
+  # environment: pypi).
+  # ---------------------------------------------------------------------------
+  pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/sigillum/
+    permissions:
+      id-token: write   # required for OIDC trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify tag matches pyproject version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PYPROJ_VER=$(awk -F'"' '/^version/ {print $2}' pyproject.toml)
+          echo "tag=$TAG  pyproject=$PYPROJ_VER"
+          [ "$TAG" = "$PYPROJ_VER" ] || { echo "pyproject/tag mismatch"; exit 1; }
+
+      - name: Build sdist + wheel
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # ---------------------------------------------------------------------------
+  # Create / update the draft GitHub Release with both sets of artefacts.
+  # The maintainer reviews and publishes manually.
+  # ---------------------------------------------------------------------------
+  release:
+    name: Draft release with packages
+    needs: [rpm, deb]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: List collected artefacts
+        run: ls -laR dist
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            dist/rpm/*.rpm
+            dist/deb/*.deb
