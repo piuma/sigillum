@@ -81,7 +81,24 @@ sudo dnf install ./sigillum-<VERSION>.fc44.noarch.rpm
 sudo apt install ./sigillum_<VERSION>_all.deb
 ```
 
-The packages declare all runtime dependencies (GTK 3, Poppler, `python3-endesive`, etc.) so no virtualenv is needed. To build the packages yourself instead of downloading them, see [`packaging/README.md`](packaging/README.md).
+The packages declare all runtime dependencies (GTK 3, Poppler, `python3-endesive`, etc.) so no virtualenv is needed. Shell completion (bash and zsh) is installed automatically. To build the packages yourself instead of downloading them, see [`packaging/README.md`](packaging/README.md).
+
+### Shell completion (PyPI / source install)
+
+`.deb` and `.rpm` packages install bash and zsh completions automatically. With `pip install` you can enable them manually from the source tree:
+
+```bash
+# bash (per-user)
+mkdir -p ~/.local/share/bash-completion/completions
+cp completion/bash/sigillum ~/.local/share/bash-completion/completions/
+
+# zsh — add the directory to $fpath in ~/.zshrc, e.g.:
+#   fpath=(~/.zsh/completions $fpath); autoload -U compinit; compinit
+mkdir -p ~/.zsh/completions
+cp completion/zsh/_sigillum ~/.zsh/completions/
+```
+
+Regenerate after CLI changes with `make completion` (requires `pip install '.[dev]'`).
 
 ### From source
 

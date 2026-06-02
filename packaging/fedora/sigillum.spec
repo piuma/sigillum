@@ -94,6 +94,12 @@ install -Dpm 0644 packaging/flatpak/io.github.sigillum.metainfo.xml \
 install -Dpm 0644 packaging/flatpak/io.github.sigillum.svg \
     %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/io.github.sigillum.svg
 
+# Shell completion (pre-generated with `make completion`, committed in repo).
+install -Dpm 0644 completion/bash/sigillum \
+    %{buildroot}%{_datadir}/bash-completion/completions/sigillum
+install -Dpm 0644 completion/zsh/_sigillum \
+    %{buildroot}%{_datadir}/zsh/site-functions/_sigillum
+
 # Man pages: docs/Makefile builds the localised versions via po4a and
 # installs both the English original and every translation under the
 # proper man tree.
@@ -124,6 +130,8 @@ appstream-util validate-relax --nonet \
 %{_datadir}/applications/io.github.sigillum.desktop
 %{_datadir}/metainfo/io.github.sigillum.metainfo.xml
 %{_datadir}/icons/hicolor/scalable/apps/io.github.sigillum.svg
+%{_datadir}/bash-completion/completions/sigillum
+%{_datadir}/zsh/site-functions/_sigillum
 
 %changelog
 %autochangelog

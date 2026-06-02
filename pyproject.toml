@@ -46,6 +46,7 @@ Changelog = "https://github.com/piuma/sigillum/releases"
 dev = [
     "pytest>=8.0",
     "ruff>=0.4",
+    "shtab>=1.6",  # used to regenerate completion/bash + completion/zsh
 ]
 
 [project.scripts]
@@ -69,6 +70,8 @@ include = [
     "docs/po4a/po4a.cfg",
     "docs/po4a/*.pot",
     "docs/po4a/*.po",
+    "completion/bash/sigillum",
+    "completion/zsh/_sigillum",
     "tests/*.py",
     "LICENSE",
     "README.md",
