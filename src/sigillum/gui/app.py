@@ -1943,9 +1943,10 @@ class SignView(Gtk.Box):
             _show_error(self._parent, _("Select a document to sign."))
             return
         secret = self._secret.get_text()
-        if not secret:
-            _show_error(self._parent,
-                        _("Enter the PIN") if s.source == "pkcs11" else _("Enter the password"))
+        # PKCS#11 always needs a PIN; PKCS#12 files may be passwordless, so
+        # only block when the source is a token.
+        if s.source == "pkcs11" and not secret:
+            _show_error(self._parent, _("Enter the PIN"))
             return
 
         doc_path = Path(doc)
@@ -2546,7 +2547,12 @@ class CryptView(Gtk.Box):
             return
 
         secret = self._dec_secret.get_text()
-        if not secret:
+        # Symmetric always needs the password; asymmetric needs a PIN only
+        # when the device is a PKCS#11 token — a passwordless PKCS#12 is OK.
+        needs_secret = (
+            fmt == "symmetric" or load_settings().source == "pkcs11"
+        )
+        if needs_secret and not secret:
             _show_error(self._parent, _("Enter the password or PIN."))
             return
 
