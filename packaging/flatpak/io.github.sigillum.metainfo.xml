@@ -60,6 +60,14 @@
   </provides>
 
   <releases>
+    <release version="0.2.2" date="2026-06-03">
+      <description>
+        <p>Explicit CAdES/PAdES/XAdES selector on the Sign tab; multi-signer
+           and nested-CMS aware Verify; extract the original document from
+           a .p7m via new `sigillum extract` CLI and GUI button; passwordless
+           PKCS#12 files accepted; bash/zsh shell completion shipped.</p>
+      </description>
+    </release>
     <release version="0.2.1" date="2026-05-27">
       <description>
         <p>GUI keyboard shortcuts (Ctrl+Q/W to quit, Ctrl+1..6 to switch tab,

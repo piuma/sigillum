@@ -1,3 +1,21 @@
+sigillum (0.2.2-1) unstable; urgency=medium
+
+  * Sign tab: explicit CAdES/PAdES/XAdES radio selector; PAdES is enabled
+    only for `.pdf` sources, XAdES only for `.xml`, CAdES always available.
+  * Sign / Decrypt: passwordless PKCS#12 files are accepted (only PKCS#11
+    tokens still require a PIN; symmetric decrypt still requires the key).
+  * Verify: report every signer on multi-signed CAdES and XAdES, including
+    nested re-enveloping such as `name-signed-signed.p7m`.
+  * Output filename for CAdES on an already-`.p7m` source no longer
+    duplicates the extension.
+  * New `sigillum extract` subcommand and GUI "Extract content…" button:
+    recover the original document carried inside a `.p7m`, recursing
+    through nested CMS layers automatically.
+  * Bash and zsh shell completion scripts generated with shtab and
+    installed alongside the binary.
+
+ -- Danilo Abbasciano <danilo@piumalab.org>  Wed, 03 Jun 2026 10:00:00 +0200
+
 sigillum (0.2.1-1) unstable; urgency=medium
 
   * GUI keyboard shortcuts: Ctrl+Q / Ctrl+W to quit, Ctrl+1..6 to switch
