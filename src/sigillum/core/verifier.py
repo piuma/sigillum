@@ -310,43 +310,103 @@ class CAdESVerifier(Verifier):
       - detached: caller supplies the original file via `original_path`
     """
 
-    def verify(self, path: Path, original_path: Path | None = None) -> VerifyResult:
-        from asn1crypto import cms as asn1cms, core
-        from cryptography.x509 import load_der_x509_certificate
-        from endesive import verifier as endesive_verifier
+    # Cap recursion when a CMS payload happens to be itself another CMS
+    # (re-enveloping / countersignature). 5 layers is well past any real-world
+    # use; protects against pathological / hostile input.
+    _MAX_NESTED_DEPTH = 5
 
+    def verify(self, path: Path, original_path: Path | None = None) -> VerifyResult:
         p7m_bytes = path.read_bytes()
-        ci = asn1cms.ContentInfo.load(p7m_bytes)
+        external = original_path.read_bytes() if original_path is not None else None
+        signers = self._verify_cms(p7m_bytes, external_data=external)
+        if not signers:
+            return VerifyResult(
+                errors=[_("no SignerInfo found in the CMS structure")],
+            )
+        return VerifyResult(signers=signers)
+
+    def _verify_cms(
+        self,
+        p7m_bytes: bytes,
+        external_data: bytes | None = None,
+        _depth: int = 0,
+    ) -> list[SignerInfo]:
+        """Verify every SignerInfo in a CMS SignedData, and if the encapsulated
+        payload is itself a CMS SignedData (nested re-enveloping, common in
+        countersignature workflows), descend into it so signers at every layer
+        are reported.
+        """
+        from asn1crypto import cms as asn1cms
+        from cryptography.x509 import load_der_x509_certificate
+
+        if _depth > self._MAX_NESTED_DEPTH:
+            return []
+
+        try:
+            ci = asn1cms.ContentInfo.load(p7m_bytes)
+        except Exception:  # noqa: BLE001 — not a CMS structure, give up
+            return []
+        if ci["content_type"].native != "signed_data":
+            return []
         signed_data = ci["content"]
 
-        # Resolve the signed content: prefer embedded, fall back to external.
         encap = signed_data["encap_content_info"]
         embedded = encap["content"]
         if embedded is not None and embedded.contents:
             datau = embedded.native if isinstance(embedded.native, bytes) else bytes(embedded)
-        elif original_path is not None:
-            datau = original_path.read_bytes()
+        elif external_data is not None:
+            datau = external_data
         else:
-            return VerifyResult(
-                errors=[_("detached signature: the original file is required (original_path)")],
-            )
+            return [SignerInfo(errors=[
+                _("detached signature: the original file is required (original_path)")
+            ])]
 
         trusted_pem = [
             c.public_bytes(serialization.Encoding.PEM) for c in self.trusted_certs
         ] or None
 
-        # endesive's CMS verifier returns one result per call; multi-signer
-        # CAdES is left as future work.
-        signer_info = signed_data["signer_infos"][0]
+        all_certs: list[x509.Certificate] = []
+        for asn1cert in signed_data["certificates"]:
+            try:
+                all_certs.append(load_der_x509_certificate(asn1cert.chosen.dump()))
+            except Exception:  # noqa: BLE001 — best-effort, skip malformed
+                continue
+
+        signers: list[SignerInfo] = [
+            self._verify_signer(si, signed_data, all_certs, datau, trusted_pem)
+            for si in signed_data["signer_infos"]
+        ]
+
+        # Re-enveloping: if the payload is itself a CMS SignedData (typical
+        # "I signed a .p7m again" workflow), verify its inner signers too.
+        # External data only applies at the outermost layer.
+        signers.extend(self._verify_cms(datau, _depth=_depth + 1))
+        return signers
+
+    def _verify_signer(
+        self,
+        signer_info,
+        signed_data,
+        all_certs: list[x509.Certificate],
+        datau: bytes,
+        trusted_pem,
+    ) -> SignerInfo:
+        """Hash / signature / chain / timestamp checks for a single SignerInfo.
+
+        endesive's CMS verifier processes a single signer per call. To reuse
+        it on multi-signer envelopes we rebuild a per-signer ContentInfo with
+        just this SignerInfo and let endesive verify that.
+        """
+        from asn1crypto import cms as asn1cms, core
+        from endesive import verifier as endesive_verifier
+
         info = SignerInfo()
         leaf_cert: x509.Certificate | None = None
         other_certs: list[x509.Certificate] = []
         try:
             serial = signer_info["sid"].native["serial_number"]
-            for asn1cert in signed_data["certificates"]:
-                der = asn1cert.chosen.dump()
-                cc = load_der_x509_certificate(der)
-                if asn1cert.native["tbs_certificate"]["serial_number"] == serial:
+            for cc in all_certs:
+                if cc.serial_number == serial and leaf_cert is None:
                     leaf_cert = cc
                     info.subject = cc.subject.rfc4514_string()
                     info.issuer = cc.issuer.rfc4514_string()
@@ -357,15 +417,21 @@ class CAdESVerifier(Verifier):
             info.errors.append(_("could not decode the certificate: {ex}").format(ex=ex))
 
         try:
+            sub_sd = signed_data.copy()
+            sub_sd["signer_infos"] = asn1cms.SignerInfos([signer_info])
+            sub_ci = asn1cms.ContentInfo({
+                "content_type": "signed_data",
+                "content": sub_sd,
+            })
             with _silenced():
                 hash_ok, sig_ok, _endesive_cert_ok = endesive_verifier.verify(
-                    p7m_bytes, datau, trusted_pem
+                    sub_ci.dump(), datau, trusted_pem
                 )
             info.hash_valid = bool(hash_ok)
             info.signature_valid = bool(sig_ok)
-            # `_endesive_cert_ok` uses build_client_verifier() which requires SAN on
-            # the leaf — Italian qualified signing certs typically don't have SAN,
-            # so we recompute cert_trusted with our own chain walker.
+            # `_endesive_cert_ok` uses build_client_verifier() which requires SAN
+            # on the leaf — Italian qualified signing certs typically don't have
+            # SAN, so we recompute cert_trusted with our own chain walker.
             if leaf_cert is not None:
                 info.cert_trusted = _verify_cert_chain(
                     leaf_cert, other_certs, self.trusted_certs,
@@ -373,7 +439,7 @@ class CAdESVerifier(Verifier):
         except Exception as ex:  # noqa: BLE001
             info.errors.append(_("verification failed: {ex}").format(ex=ex))
 
-        # Verify the timestamp token if present.
+        # Per-signer timestamp token (RFC 3161 inside unsigned attrs).
         unsigned = signer_info["unsigned_attrs"]
         if unsigned is not None and not isinstance(unsigned, core.Void):
             for attr in unsigned:
@@ -390,7 +456,7 @@ class CAdESVerifier(Verifier):
                 if info.timestamp:
                     break
 
-        return VerifyResult(signers=[info])
+        return info
 
 
 class XAdESVerifier(Verifier):
@@ -398,45 +464,70 @@ class XAdESVerifier(Verifier):
 
     def verify(self, path: Path, original_path: Path | None = None) -> VerifyResult:
         del original_path  # XAdES enveloped signatures are self-contained
+        from lxml import etree
+
+        xml_bytes = path.read_bytes()
+        try:
+            root = etree.fromstring(xml_bytes)
+        except Exception as ex:  # noqa: BLE001
+            return VerifyResult(errors=[_("XML not readable: {ex}").format(ex=ex)])
+
+        signatures = root.xpath("//*[local-name()='Signature']")
+        if not signatures:
+            return VerifyResult(errors=[_("XML signature not found (no ds:Signature)")])
+
+        # The document digest is computed against the canonical form of the
+        # document with *all* signatures stripped — same value for every
+        # SignerInfo, so compute it once.
+        root_wo_sig = copy.deepcopy(root)
+        for sig in root_wo_sig.xpath("//*[local-name()='Signature']"):
+            parent = sig.getparent()
+            if parent is not None:
+                parent.remove(sig)
+        digest_doc = base64.b64encode(hashlib.sha256(
+            etree.tostring(root_wo_sig, method="c14n")
+        ).digest()).decode()
+
+        signers = [
+            self._verify_signature_element(sig, digest_doc) for sig in signatures
+        ]
+        return VerifyResult(signers=signers)
+
+    def _verify_signature_element(self, signature, digest_doc: str) -> SignerInfo:
         from cryptography.x509 import load_der_x509_certificate
         from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
         from lxml import etree
 
-        xml_bytes = path.read_bytes()
         info = SignerInfo()
-        leaf = None
+        leaf: x509.Certificate | None = None
         intermediates: list[x509.Certificate] = []
 
         try:
-            root = etree.fromstring(xml_bytes)
-            cert_nodes = root.xpath("//*[local-name()='X509Certificate']/text()")
+            # X509 chain is scoped to *this* signature element.
+            cert_nodes = signature.xpath(".//*[local-name()='X509Certificate']/text()")
             if not cert_nodes:
-                return VerifyResult(errors=[_("no X.509 certificate found in the XML signature")])
-
+                info.errors.append(_("no X.509 certificate found in the XML signature"))
+                return info
             chain: list[x509.Certificate] = []
             for b64_cert in cert_nodes:
                 der = base64.b64decode("".join(b64_cert.split()))
                 chain.append(load_der_x509_certificate(der))
-
             leaf = chain[0]
             intermediates = chain[1:]
             info.subject = leaf.subject.rfc4514_string()
             info.issuer = leaf.issuer.rfc4514_string()
             info.serial = format(leaf.serial_number, "x")
         except Exception as ex:  # noqa: BLE001
-            return VerifyResult(errors=[_("XML signature not readable: {ex}").format(ex=ex)])
+            info.errors.append(_("XML signature not readable: {ex}").format(ex=ex))
+            return info
 
         try:
-            signature = root.xpath("//*[local-name()='Signature']")
-            if not signature:
-                return VerifyResult(errors=[_("XML signature not found (no ds:Signature)")])
-            signature = signature[0]
-
-            signed_info = signature.xpath("./*[local-name()='SignedInfo']")
-            if not signed_info:
-                return VerifyResult(errors=[_("SignedInfo missing in the XML signature")])
-            signed_info = signed_info[0]
+            signed_info_nodes = signature.xpath("./*[local-name()='SignedInfo']")
+            if not signed_info_nodes:
+                info.errors.append(_("SignedInfo missing in the XML signature"))
+                return info
+            signed_info = signed_info_nodes[0]
 
             refs = signed_info.xpath("./*[local-name()='Reference']")
             digest_map = {}
@@ -448,35 +539,28 @@ class XAdESVerifier(Verifier):
 
             if "" not in digest_map:
                 info.errors.append(_("missing document reference"))
-            else:
-                root_wo_sig = copy.deepcopy(root)
-                for sig in root_wo_sig.xpath("//*[local-name()='Signature']"):
-                    parent = sig.getparent()
-                    if parent is not None:
-                        parent.remove(sig)
-                digest_doc = base64.b64encode(hashlib.sha256(
-                    etree.tostring(root_wo_sig, method="c14n")
-                ).digest()).decode()
-                if digest_doc != digest_map[""]:
-                    info.errors.append(_("invalid document digest"))
+            elif digest_doc != digest_map[""]:
+                info.errors.append(_("invalid document digest"))
 
-            sp_nodes = root.xpath("//*[local-name()='SignedProperties']")
-            if not sp_nodes:
-                info.errors.append(_("SignedProperties missing"))
-            else:
-                sp = sp_nodes[0]
-                sp_id = sp.get("Id")
-                if sp_id:
-                    sp_uri = f"#{sp_id}"
-                    expected = digest_map.get(sp_uri)
-                    if expected is None:
-                        info.errors.append(_("missing reference to SignedProperties"))
-                    else:
-                        digest_sp = base64.b64encode(hashlib.sha256(
-                            etree.tostring(sp, method="c14n")
-                        ).digest()).decode()
-                        if digest_sp != expected:
-                            info.errors.append(_("invalid SignedProperties digest"))
+            # SignedProperties is per-signature; find the one referenced by
+            # this SignedInfo (matching the Id in the ref URI), not the first
+            # SignedProperties in the document.
+            sp_uri = next(
+                (u for u in digest_map if u.startswith("#")), ""
+            )
+            if sp_uri:
+                sp_id = sp_uri.lstrip("#")
+                sp_nodes = signature.xpath(
+                    ".//*[local-name()='SignedProperties'][@Id=$id]", id=sp_id,
+                )
+                if not sp_nodes:
+                    info.errors.append(_("SignedProperties missing"))
+                else:
+                    digest_sp = base64.b64encode(hashlib.sha256(
+                        etree.tostring(sp_nodes[0], method="c14n")
+                    ).digest()).decode()
+                    if digest_sp != digest_map[sp_uri]:
+                        info.errors.append(_("invalid SignedProperties digest"))
 
             info.hash_valid = not any(
                 "digest" in err.lower() or "reference" in err.lower()
@@ -518,4 +602,4 @@ class XAdESVerifier(Verifier):
         if self.trusted_certs and not info.cert_trusted:
             info.errors.append(_("signer certificate chain is not trusted"))
 
-        return VerifyResult(signers=[info])
+        return info
