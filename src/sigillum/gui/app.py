@@ -180,6 +180,10 @@ def _default_output_path(input_path: Path, fmt: str) -> Path:
         return input_path.with_name(input_path.stem + "-signed.pdf")
     if fmt == "XAdES":
         return input_path.with_name(input_path.stem + "-signed.xml")
+    # CAdES: avoid the double `.p7m.p7m` extension when the source is
+    # already a .p7m (countersignature / re-enveloping of a signed file).
+    if input_path.suffix.lower() == ".p7m":
+        return input_path.with_name(input_path.stem + "-signed.p7m")
     return input_path.with_name(input_path.name + ".p7m")
 
 
