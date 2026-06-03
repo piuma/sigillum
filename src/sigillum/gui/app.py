@@ -1531,8 +1531,32 @@ class SignView(Gtk.Box):
         self._doc_chooser = Gtk.FileChooserButton(action=Gtk.FileChooserAction.OPEN)
         self._doc_chooser.connect("file-set", self._on_doc_chosen)
         self.pack_start(self._doc_chooser, False, False, 0)
-        self._format_label = Gtk.Label(label=_("Format: —"), xalign=0)
-        self.pack_start(self._format_label, False, False, 0)
+
+        # Signature format selector. Default auto-picked from the file
+        # extension, but the user can override: CAdES is always available
+        # (envelopes any file as `.p7m`), PAdES needs a `.pdf`, XAdES a
+        # `.xml`. PAdES/XAdES rows are desensitised when the source file
+        # doesn't match.
+        fmt_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        fmt_row.pack_start(Gtk.Label(label=_("Format:"), xalign=0),
+                           False, False, 0)
+        self._fmt_cades = Gtk.RadioButton.new_with_label_from_widget(
+            None, "CAdES (.p7m)")
+        self._fmt_pades = Gtk.RadioButton.new_with_label_from_widget(
+            self._fmt_cades, "PAdES (PDF)")
+        self._fmt_xades = Gtk.RadioButton.new_with_label_from_widget(
+            self._fmt_cades, "XAdES (XML)")
+        for r in (self._fmt_cades, self._fmt_pades, self._fmt_xades):
+            r.connect("toggled", self._on_format_toggled)
+            fmt_row.pack_start(r, False, False, 0)
+        self.pack_start(fmt_row, False, False, 0)
+        # Guard so _on_format_toggled doesn't re-enter while we're flipping
+        # the radios programmatically from _on_doc_chosen.
+        self._fmt_syncing = False
+        # Until the user picks a file: CAdES is the only universally
+        # applicable option.
+        self._fmt_pades.set_sensitive(False)
+        self._fmt_xades.set_sensitive(False)
 
         # Editable output file name — pre-populated when the source is chosen.
         out_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
@@ -1767,19 +1791,64 @@ class SignView(Gtk.Box):
         if not path:
             return
         doc_path = Path(path)
-        fmt = _detect_format(doc_path)
-        self._format_label.set_text(_("Format: {fmt}").format(fmt=fmt))
+        self._sync_format_radios(doc_path)
+        fmt = self._selected_signature_format()
         self._sign_output_name.set_text(_default_output_path(doc_path, fmt).name)
-        # "Firma visibile" is a PAdES-only feature.
+        self._sync_visible_sensitivity(fmt)
+        # The custom box is tied to a specific document — discard on doc change
+        # because page sizes / count may differ.
+        self._reset_custom_box()
+
+    def _sync_format_radios(self, doc_path: Path) -> None:
+        """Enable/disable PAdES/XAdES based on the file extension and select
+        the most natural default. CAdES is always available."""
+        suffix = doc_path.suffix.lower()
+        is_pdf = suffix == ".pdf"
+        is_xml = suffix == ".xml"
+        self._fmt_syncing = True
+        try:
+            self._fmt_pades.set_sensitive(is_pdf)
+            self._fmt_xades.set_sensitive(is_xml)
+            if is_pdf:
+                self._fmt_pades.set_active(True)
+            elif is_xml:
+                self._fmt_xades.set_active(True)
+            else:
+                self._fmt_cades.set_active(True)
+        finally:
+            self._fmt_syncing = False
+
+    def _selected_signature_format(self) -> str:
+        if self._fmt_pades.get_active():
+            return "PAdES"
+        if self._fmt_xades.get_active():
+            return "XAdES"
+        return "CAdES"
+
+    def _sync_visible_sensitivity(self, fmt: str) -> None:
+        """The 'visible signature' checkbox is PAdES-only."""
         if fmt == "PAdES":
             self._visible_checkbox.set_sensitive(True)
         else:
             self._visible_checkbox.set_active(False)
             self._visible_checkbox.set_sensitive(False)
             self._visible_revealer.set_reveal_child(False)
-        # The custom box is tied to a specific document — discard on doc change
-        # because page sizes / count may differ.
-        self._reset_custom_box()
+
+    def _on_format_toggled(self, radio: Gtk.RadioButton):
+        # Gtk fires `toggled` on both the radio losing activation and the
+        # one gaining it. Only act when this is the new active button (and
+        # not in the middle of a programmatic sync).
+        if self._fmt_syncing or not radio.get_active():
+            return
+        fmt = self._selected_signature_format()
+        self._sync_visible_sensitivity(fmt)
+        # Refresh the suggested output name so it matches the new format
+        # (e.g. PDF → CAdES turns `report-signed.pdf` into `report.pdf.p7m`).
+        doc = self._doc_chooser.get_filename()
+        if doc:
+            self._sign_output_name.set_text(
+                _default_output_path(Path(doc), fmt).name
+            )
 
     def _on_visible_toggled(self, checkbox):
         self._visible_revealer.set_reveal_child(checkbox.get_active())
@@ -1794,7 +1863,7 @@ class SignView(Gtk.Box):
 
     def _on_pick_box_clicked(self, _button):
         doc = self._doc_chooser.get_filename()
-        if not doc or _detect_format(Path(doc)) != "PAdES":
+        if not doc or self._selected_signature_format() != "PAdES":
             _show_error(self._parent, _("Select a PDF document first."))
             return
         from sigillum.gui.signature_picker import pick_signature_box
@@ -1876,7 +1945,7 @@ class SignView(Gtk.Box):
             return
 
         doc_path = Path(doc)
-        fmt = _detect_format(doc_path)
+        fmt = self._selected_signature_format()
         out_name = self._sign_output_name.get_text().strip()
         if not out_name:
             _show_error(self._parent, _("Provide the output file name."))
