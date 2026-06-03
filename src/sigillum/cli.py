@@ -410,6 +410,37 @@ def _cmd_timestamp(args) -> int:
 
 
 # ---------------------------------------------------------------------------
+# `extract` subcommand
+# ---------------------------------------------------------------------------
+
+def _cmd_extract(args) -> int:
+    from .core.verifier import extract_p7m_content
+
+    src = Path(args.input)
+    if not src.is_file():
+        return _err(_("file not found: {path}").format(path=src))
+
+    # Default output strips the trailing `.p7m` so `report.pdf.p7m` becomes
+    # `report.pdf`. If the source doesn't end in `.p7m`, fall back to
+    # `<stem>-extracted<suffix>` so we never overwrite the source.
+    if args.output:
+        out = Path(args.output)
+    elif src.suffix.lower() == ".p7m":
+        out = src.with_name(src.stem)
+    else:
+        out = src.with_name(f"{src.stem}-extracted{src.suffix}")
+
+    try:
+        out.write_bytes(extract_p7m_content(src, recursive=not args.shallow))
+    except ValueError as ex:
+        return _err(str(ex))
+    except OSError as ex:
+        return _err(_("could not write output: {ex}").format(ex=ex), code=2)
+    print(str(out))
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # `encrypt` subcommand
 # ---------------------------------------------------------------------------
 
@@ -924,6 +955,23 @@ def build_parser() -> argparse.ArgumentParser:
                       help=_("output format (default: tsd)"))
     _add_tsa_flags(p_ts)
     p_ts.set_defaults(func=_cmd_timestamp)
+
+    # extract
+    p_ext = sub.add_parser(
+        "extract",
+        help=_("extract the embedded payload from a .p7m (CMS enveloping)"),
+        description=_(
+            "Extract the original document carried inside a CAdES "
+            "enveloping signature. Fails on detached signatures."
+        ),
+    )
+    p_ext.add_argument("input", help=_(".p7m file to extract"))
+    p_ext.add_argument("-o", "--output",
+                       help=_("output file (default: strip the .p7m suffix)"))
+    p_ext.add_argument("--shallow", action="store_true",
+                       help=_("extract only one CMS layer instead of "
+                              "recursing into nested .p7m wrappers"))
+    p_ext.set_defaults(func=_cmd_extract)
 
     # encrypt
     p_enc = sub.add_parser(

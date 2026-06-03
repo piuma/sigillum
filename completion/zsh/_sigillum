@@ -9,6 +9,7 @@ _shtab_sigillum_commands() {
     "decrypt:Decrypt a .enc (symmetric) or .p7e (CMS EnvelopedData) file."
     "detect:"
     "encrypt:Encrypt the input file. Default\: symmetric AES-256 with password."
+    "extract:Extract the original document carried inside a CAdES enveloping signature. Fails on detached signatures."
     "gui:"
     "sign:Sign the input file. The format is derived from the extension."
     "timestamp:Timestamp any file via RFC 3161."
@@ -81,6 +82,13 @@ _shtab_sigillum_encrypt_options=(
   "--lib[path to the token\'s PKCS\#11 (.so) module]:lib:"
   "--cert-id[composite id of the certificate on the token (see \`sigillum detect\`)]:cert_id:"
   ":plaintext file:"
+)
+
+_shtab_sigillum_extract_options=(
+  "(- : *)"{-h,--help}"[show this help message and exit]"
+  {-o,--output}"[output file (default\: strip the .p7m suffix)]:output:"
+  "--shallow[extract only one CMS layer instead of recursing into nested .p7m wrappers]"
+  ":.p7m file to extract:"
 )
 
 _shtab_sigillum_gui_options=(
@@ -156,6 +164,7 @@ _shtab_sigillum() {
         decrypt) _arguments -C -s $_shtab_sigillum_decrypt_options ;;
         detect) _arguments -C -s $_shtab_sigillum_detect_options ;;
         encrypt) _arguments -C -s $_shtab_sigillum_encrypt_options ;;
+        extract) _arguments -C -s $_shtab_sigillum_extract_options ;;
         gui) _arguments -C -s $_shtab_sigillum_gui_options ;;
         sign) _arguments -C -s $_shtab_sigillum_sign_options ;;
         timestamp) _arguments -C -s $_shtab_sigillum_timestamp_options ;;

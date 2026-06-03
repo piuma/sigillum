@@ -161,6 +161,7 @@ sigillum sign <file> [-o OUT] [--level B|T|LT] [--visible] [--position …]
 [--image LOGO] [--reason …] [--cert P12 | --lib LIB --cert-id ID] 
 [--tsa URL --tsa-user U --tsa-password P]
 sigillum verify <file> [--original FILE] [--trusted CA.pem] [--tsa-trusted CA.pem] [--json]
+sigillum extract <file.p7m> [-o OUT] [--shallow]
 sigillum timestamp <file> [-o OUT] [--format tsr|tsd] [--tsa URL …]
 sigillum encrypt <file> [-o OUT] [--mode sym|asym] [--algo AES-256|AES-128|3DES|Blowfish] 
 [--recipient CERT.p12]
@@ -198,6 +199,9 @@ SIGILLUM_PIN=123456 sigillum sign report.pdf \
 
 # Verify with JSON output (parseable by script)
 sigillum verify document.signed.pdf --json
+
+# Extract the original document carried inside an enveloping .p7m
+sigillum extract document.pdf.p7m            # writes document.pdf
 
 # Standalone timestamp .tsd with TSA configured
 sigillum timestamp document.pdf --format tsd

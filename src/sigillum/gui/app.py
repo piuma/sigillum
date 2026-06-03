@@ -219,6 +219,19 @@ def _show_error(parent: Gtk.Window, message: str):
     dlg.destroy()
 
 
+def _show_info(parent: Gtk.Window, message: str, title: str | None = None):
+    dlg = Gtk.MessageDialog(
+        transient_for=parent,
+        modal=True,
+        message_type=Gtk.MessageType.INFO,
+        buttons=Gtk.ButtonsType.OK,
+        text=title or _("Info"),
+        secondary_text=message,
+    )
+    dlg.run()
+    dlg.destroy()
+
+
 # =====================================================================
 #  SettingsView — configure & persist the signing device
 # =====================================================================
@@ -2717,10 +2730,21 @@ class VerifyView(Gtk.Box):
         # Initialize TSL state — uses both the inline status and the checkbox.
         self.refresh_tsl_status()
 
+        action_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self._verify_button = Gtk.Button(label=_("Verify"))
         self._verify_button.get_style_context().add_class("suggested-action")
         self._verify_button.connect("clicked", self._on_verify_clicked)
-        self.pack_start(self._verify_button, False, False, 12)
+        action_row.pack_start(self._verify_button, False, False, 0)
+        # Secondary action, .p7m only: extract the embedded payload. Hidden
+        # until the user picks a CMS-enveloping file.
+        self._extract_button = Gtk.Button(label=_("Extract content…"))
+        self._extract_button.set_tooltip_text(
+            _("Extract the original document carried inside the .p7m")
+        )
+        self._extract_button.set_no_show_all(True)
+        self._extract_button.connect("clicked", self._on_extract_clicked)
+        action_row.pack_start(self._extract_button, False, False, 0)
+        self.pack_start(action_row, False, False, 12)
 
         scroll = Gtk.ScrolledWindow()
         scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -2791,12 +2815,61 @@ class VerifyView(Gtk.Box):
             self._results_box.remove(child)
 
     def _on_verify_file_chosen(self, chooser: Gtk.FileChooserButton):
-        """Reveal the 'file originale' picker only for .tsr files."""
+        """Reveal the 'file originale' picker only for .tsr files, and show
+        the 'Extract content…' button only for CMS-enveloping .p7m files."""
         p = chooser.get_filename()
-        is_tsr = bool(p) and _detect_format(Path(p)) == "TSR"
+        fmt = _detect_format(Path(p)) if p else None
+        is_tsr = fmt == "TSR"
         self._orig_revealer.set_reveal_child(is_tsr)
         if not is_tsr:
             self._orig_chooser.unselect_all()
+        if fmt == "CAdES":
+            self._extract_button.show()
+        else:
+            self._extract_button.hide()
+
+    def _on_extract_clicked(self, _button):
+        src = self._file_chooser.get_filename()
+        if not src:
+            return
+        src_path = Path(src)
+
+        # Default destination: strip the trailing .p7m if present.
+        default_name = (
+            src_path.stem if src_path.suffix.lower() == ".p7m"
+            else f"{src_path.stem}-extracted{src_path.suffix}"
+        )
+        dlg = Gtk.FileChooserDialog(
+            title=_("Save extracted content"),
+            transient_for=self._parent,
+            action=Gtk.FileChooserAction.SAVE,
+        )
+        dlg.add_buttons(
+            _("Cancel"), Gtk.ResponseType.CANCEL,
+            _("Save"), Gtk.ResponseType.OK,
+        )
+        dlg.set_do_overwrite_confirmation(True)
+        dlg.set_current_folder(str(src_path.parent))
+        dlg.set_current_name(default_name)
+        try:
+            if dlg.run() != Gtk.ResponseType.OK:
+                return
+            out = Path(dlg.get_filename())
+        finally:
+            dlg.destroy()
+
+        from sigillum.core.verifier import extract_p7m_content
+        try:
+            out.write_bytes(extract_p7m_content(src_path))
+        except ValueError as ex:
+            _show_error(self._parent, str(ex))
+            return
+        except OSError as ex:
+            _show_error(self._parent,
+                        _("Could not write {path}: {ex}").format(path=out, ex=ex))
+            return
+        _show_info(self._parent,
+                   _("Content extracted to {path}").format(path=out))
 
     def _on_verify_clicked(self, _button):
         path = self._file_chooser.get_filename()

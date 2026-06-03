@@ -225,6 +225,63 @@ class VerifyResult:
         return bool(self.signers) and all(s.valid for s in self.signers)
 
 
+# Cap how many CMS layers `extract_p7m_content` is willing to peel through
+# in recursive mode. Mirrors CAdESVerifier._MAX_NESTED_DEPTH and protects
+# against pathological / hostile input.
+_MAX_EXTRACT_DEPTH = 5
+
+
+def extract_p7m_content(p7m_path: Path, recursive: bool = True) -> bytes:
+    """Return the payload embedded inside a CMS SignedData (.p7m).
+
+    The typical Italian QES `.p7m` is *enveloping*: it carries the original
+    file's bytes inside ``signed_data.encap_content_info.content``. This
+    helper returns those bytes verbatim so the caller can write them back
+    to disk (e.g. a `.p7m` extracted into the original `.pdf`).
+
+    When *recursive* is True (default), if the extracted payload is itself
+    another CMS SignedData (countersignature / re-enveloping workflow,
+    common when a `.p7m` is signed again) keep peeling layers until the
+    payload is no longer CMS, up to ``_MAX_EXTRACT_DEPTH`` levels — so the
+    caller gets the *original* document regardless of how many times it
+    was re-signed. Pass ``recursive=False`` to extract a single layer.
+
+    Raises ``ValueError`` if the file is not a CMS SignedData or if the
+    signature is *detached* (no embedded content — the original file would
+    have to be provided externally and there is nothing to extract).
+    """
+    from asn1crypto import cms as asn1cms
+
+    data = p7m_path.read_bytes()
+    try:
+        ci = asn1cms.ContentInfo.load(data)
+    except Exception as ex:  # noqa: BLE001
+        raise ValueError(_("not a CMS file: {ex}").format(ex=ex)) from ex
+    if ci["content_type"].native != "signed_data":
+        raise ValueError(_("not a CMS SignedData ({kind})").format(
+            kind=ci["content_type"].native))
+
+    for _depth in range(_MAX_EXTRACT_DEPTH):
+        encap = ci["content"]["encap_content_info"]
+        embedded = encap["content"]
+        if embedded is None or not embedded.contents:
+            raise ValueError(_(
+                "detached signature: no embedded content to extract"
+            ))
+        payload = embedded.native if isinstance(embedded.native, bytes) else bytes(embedded)
+        if not recursive:
+            return payload
+        # Stop as soon as the payload is no longer a CMS SignedData.
+        try:
+            inner = asn1cms.ContentInfo.load(payload)
+        except Exception:  # noqa: BLE001 — payload is the real document
+            return payload
+        if inner["content_type"].native != "signed_data":
+            return payload
+        ci = inner
+    return payload
+
+
 class Verifier(ABC):
     """Verify a signed artifact.
 
