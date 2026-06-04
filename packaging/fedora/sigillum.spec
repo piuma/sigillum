@@ -87,12 +87,12 @@ Both a GTK GUI and a feature-complete CLI for batch workflows are included.
 
 # Desktop entry, AppStream metainfo and SVG icon are kept under
 # packaging/flatpak/ but are not flatpak-specific — install them from there.
-install -Dpm 0644 packaging/flatpak/io.github.sigillum.desktop \
-    %{buildroot}%{_datadir}/applications/io.github.sigillum.desktop
-install -Dpm 0644 packaging/flatpak/io.github.sigillum.metainfo.xml \
-    %{buildroot}%{_datadir}/metainfo/io.github.sigillum.metainfo.xml
-install -Dpm 0644 packaging/flatpak/io.github.sigillum.svg \
-    %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/io.github.sigillum.svg
+install -Dpm 0644 packaging/flatpak/io.github.piuma.sigillum.desktop \
+    %{buildroot}%{_datadir}/applications/io.github.piuma.sigillum.desktop
+install -Dpm 0644 packaging/flatpak/io.github.piuma.sigillum.metainfo.xml \
+    %{buildroot}%{_datadir}/metainfo/io.github.piuma.sigillum.metainfo.xml
+install -Dpm 0644 packaging/flatpak/io.github.piuma.sigillum.svg \
+    %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/io.github.piuma.sigillum.svg
 
 # Shell completion (pre-generated with `make completion`, committed in repo).
 install -Dpm 0644 completion/bash/sigillum \
@@ -115,9 +115,9 @@ make -C po install DESTDIR=%{buildroot} prefix=%{_prefix}
 # Network and hardware-bound tests are excluded from the build chroot.
 %pytest tests/ -m "not network and not hardware"
 desktop-file-validate \
-    %{buildroot}%{_datadir}/applications/io.github.sigillum.desktop
+    %{buildroot}%{_datadir}/applications/io.github.piuma.sigillum.desktop
 appstream-util validate-relax --nonet \
-    %{buildroot}%{_datadir}/metainfo/io.github.sigillum.metainfo.xml
+    %{buildroot}%{_datadir}/metainfo/io.github.piuma.sigillum.metainfo.xml
 
 # %%{pypi_name}.lang (from %%find_lang) pulls in every
 # locale/*/LC_MESSAGES/sigillum.mo built by `make install`.
@@ -127,9 +127,9 @@ appstream-util validate-relax --nonet \
 %{_bindir}/sigillum
 %{_mandir}/man1/sigillum.1*
 %lang(it) %{_mandir}/it/man1/sigillum.1*
-%{_datadir}/applications/io.github.sigillum.desktop
-%{_datadir}/metainfo/io.github.sigillum.metainfo.xml
-%{_datadir}/icons/hicolor/scalable/apps/io.github.sigillum.svg
+%{_datadir}/applications/io.github.piuma.sigillum.desktop
+%{_datadir}/metainfo/io.github.piuma.sigillum.metainfo.xml
+%{_datadir}/icons/hicolor/scalable/apps/io.github.piuma.sigillum.svg
 %{_datadir}/bash-completion/completions/sigillum
 %{_datadir}/zsh/site-functions/_sigillum
 

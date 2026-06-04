@@ -54,7 +54,7 @@ Lo script:
 Lancia poi l'app:
 
 ```bash
-flatpak run io.github.sigillum
+flatpak run io.github.piuma.sigillum
 ```
 
 ### Bundle distribuibile
@@ -72,7 +72,7 @@ flatpak install --user ./sigillum.flatpak
 
 ### Permessi sandbox
 
-Configurati nel manifest `packaging/flatpak/io.github.sigillum.yml`
+Configurati nel manifest `packaging/flatpak/io.github.piuma.sigillum.yml`
 (sezione `finish-args`):
 
 - `--socket=pcsc` — accesso al daemon `pcscd` dell'host per smartcard
@@ -106,7 +106,7 @@ sandbox senza problemi.
 Una volta validato localmente:
 
 1. Fork del repo `flathub/flathub`
-2. PR con manifest + AppStream + icona in una nuova directory `io.github.sigillum/`
+2. PR con manifest + AppStream + icona in una nuova directory `io.github.piuma.sigillum/`
 3. Il bot Flathub valida e suggerisce eventuali correzioni
 4. Dopo l'approvazione, l'app appare su Flathub e diventa installabile
    da qualsiasi distribuzione con un click

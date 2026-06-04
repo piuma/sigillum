@@ -3238,7 +3238,7 @@ class SigillumWindow(Gtk.ApplicationWindow):
 
 class SigillumApp(Gtk.Application):
     def __init__(self):
-        super().__init__(application_id="io.github.sigillum")
+        super().__init__(application_id="io.github.piuma.sigillum")
 
     def do_startup(self):
         Gtk.Application.do_startup(self)

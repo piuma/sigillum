@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.sigillum</id>
+  <id>io.github.piuma.sigillum</id>
   <name>Sigillum</name>
   <summary>Sign, timestamp and verify digital documents</summary>
   <summary xml:lang="it">Firma, marca temporale e verifica documenti digitali</summary>
@@ -38,7 +38,7 @@
     </ul>
   </description>
 
-  <launchable type="desktop-id">io.github.sigillum.desktop</launchable>
+  <launchable type="desktop-id">io.github.piuma.sigillum.desktop</launchable>
 
   <url type="homepage">https://github.com/piuma/sigillum</url>
   <url type="bugtracker">https://github.com/piuma/sigillum/issues</url>

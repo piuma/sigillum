@@ -27,9 +27,9 @@
 # `flatpak-pip-generator` so they ship as deterministic source tarballs.
 # Regenerate them via `scripts/build_flatpak.sh --regen-deps`.
 
-app-id: io.github.sigillum
+app-id: io.github.piuma.sigillum
 runtime: org.gnome.Platform
-runtime-version: '47'
+runtime-version: '50'
 sdk: org.gnome.Sdk
 command: sigillum
 
@@ -57,9 +57,8 @@ finish-args:
   - --filesystem=/usr/lib:ro
   - --filesystem=/usr/local/lib:ro
   - --filesystem=/opt:ro
-  # Sigillum reads/writes its own config and trust bundles
-  - --filesystem=xdg-config/sigillum:create
-  - --filesystem=xdg-data/sigillum:create
+  # Note: xdg-config/<app-id>/ and xdg-data/<app-id>/ are accessible
+  # automatically — no explicit finish-args needed.
 
 cleanup:
   - /share/man
@@ -163,12 +162,12 @@ modules:
         --prefix=${FLATPAK_DEST}
         --no-build-isolation
         .
-      - install -Dm644 packaging/flatpak/io.github.sigillum.desktop
-        ${FLATPAK_DEST}/share/applications/io.github.sigillum.desktop
-      - install -Dm644 packaging/flatpak/io.github.sigillum.metainfo.xml
-        ${FLATPAK_DEST}/share/metainfo/io.github.sigillum.metainfo.xml
-      - install -Dm644 packaging/flatpak/io.github.sigillum.svg
-        ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/io.github.sigillum.svg
+      - install -Dm644 packaging/flatpak/io.github.piuma.sigillum.desktop
+        ${FLATPAK_DEST}/share/applications/io.github.piuma.sigillum.desktop
+      - install -Dm644 packaging/flatpak/io.github.piuma.sigillum.metainfo.xml
+        ${FLATPAK_DEST}/share/metainfo/io.github.piuma.sigillum.metainfo.xml
+      - install -Dm644 packaging/flatpak/io.github.piuma.sigillum.svg
+        ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/io.github.piuma.sigillum.svg
     sources:
       - type: dir
         path: ../..

@@ -176,7 +176,7 @@ Steps:
   - docs/sigillum.1 => sigillum 0.2.1
   - packaging/fedora/sigillum.spec → Version: 0.2.1 (was still 0.1.0)
   - debian/changelog => new sigillum entry (0.2.1-1) ... (was still 0.1.0-1)
-  - (opt.) packaging/flatpak/io.github.sigillum.metainfo.xml => new <release version="0.2.1" date="...">
+  - (opt.) packaging/flatpak/io.github.piuma.sigillum.metainfo.xml => new <release version="0.2.1" date="...">
 2. Commit + tag v0.2.1.
 3. Push the commit and tag => automatically triggers the workflow.
 4. GitHub Actions: The pypi job will pause pending approval (pypi environment with required reviewer). You approve by clicking "Review deployments" on the workflow page.

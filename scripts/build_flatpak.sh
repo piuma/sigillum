@@ -22,7 +22,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FLATPAK_DIR="$ROOT_DIR/packaging/flatpak"
 BUILD_DIR="$ROOT_DIR/dist/flatpak-build"
 REPO_DIR="$ROOT_DIR/dist/flatpak-repo"
-APP_ID="io.github.sigillum"
+APP_ID="io.github.piuma.sigillum"
 MANIFEST="$FLATPAK_DIR/$APP_ID.yml"
 DEPS_YAML="$FLATPAK_DIR/python3-deps.yaml"
 
