@@ -38,8 +38,18 @@ SYSTEM_DRIVER_PATHS: tuple[str, ...] = (
     "/app/lib/libykcs11.so",
     # Bit4id (closed-source vendor — host only, not redistributable)
     "/usr/lib64/libbit4xpki.so",
+    "/usr/lib/x86_64-linux-gnu/libbit4xpki.so",
     "/usr/local/lib/libbit4xpki.so",
     "/opt/bit4id/lib/libbit4xpki.so",
+    # Aruba Sign desktop bundle ships the Bit4id PKCS#11 driver under
+    # /opt/arubasign/...; the sibling `libsmmulti.so` is not a PKCS#11
+    # module (no `C_GetFunctionList`) so we deliberately don't probe it.
+    "/opt/arubasign/asp/lin-x64/driver/libbit4xpki.so",
+    # Actalis (Cyberlogic CyberMW middleware shipped with the Actalis CNS
+    # / qualified-signature smartcards, closed-source).
+    "/usr/lib64/libcybermw.so",
+    "/usr/lib/x86_64-linux-gnu/libcybermw.so",
+    "/usr/local/lib/libcybermw.so",
     # OpenSC — host packages
     "/usr/lib64/pkcs11/opensc-pkcs11.so",
     "/usr/lib64/opensc-pkcs11.so",
@@ -49,6 +59,30 @@ SYSTEM_DRIVER_PATHS: tuple[str, ...] = (
     "/app/lib/pkcs11/opensc-pkcs11.so",
     "/app/lib/opensc-pkcs11.so",
 )
+
+
+def _is_flatpak() -> bool:
+    """True when running inside a Flatpak sandbox.
+
+    Flatpak guarantees `/.flatpak-info` exists in the sandbox and is absent
+    on the host — that's the official detection knob.
+    """
+    return Path("/.flatpak-info").is_file()
+
+
+def _flatpak_host_view(path: str) -> str:
+    """Translate a host path into its sandbox-visible view.
+
+    Inside a Flatpak sandbox the host's `/usr` and `/opt` (when exposed via
+    `--filesystem=/usr/...:ro` or `--filesystem=/opt:ro`) are mounted under
+    `/run/host/...`, not at their original locations — the sandbox already
+    has its own `/usr` from the runtime. Outside Flatpak this is a no-op.
+    """
+    if not _is_flatpak():
+        return path
+    if path.startswith(("/usr/", "/opt/")):
+        return f"/run/host{path}"
+    return path
 
 # Vendor distributions often install their PKCS#11 module under the user's
 # home directory. We glob for the typical layouts of Aruba Sign, InfoCamere
@@ -228,6 +262,8 @@ def _label_for(path: str) -> str:
         if "dike" in p:
             return "Bit4id — Dike"
         return "Bit4id"
+    if "cybermw" in p:
+        return "Actalis (CyberMW)"
     if "opensc" in p:
         return _("OpenSC (generic smartcard)")
     return Path(path).name
@@ -275,8 +311,12 @@ def find_available_drivers(extra: Sequence[str] | None = None) -> list[str]:
     for entry in (extra or ()):
         _add_extra(entry)
     for path in SYSTEM_DRIVER_PATHS:
-        if Path(path).is_file():
-            _accept(path)
+        # Inside a Flatpak sandbox the host's /usr and /opt are mounted at
+        # /run/host/...; SYSTEM_DRIVER_PATHS is written with host paths so
+        # this rewrite lets the same list work in both contexts.
+        candidate = _flatpak_host_view(path)
+        if Path(candidate).is_file():
+            _accept(candidate)
     for pattern in USER_DRIVER_GLOBS:
         _add_pattern(pattern)
     return out

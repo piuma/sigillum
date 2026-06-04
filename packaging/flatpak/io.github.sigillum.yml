@@ -46,6 +46,17 @@ finish-args:
   - --device=all
   # User documents + vendor PKCS#11 drivers under $HOME
   - --filesystem=home
+  # System-wide vendor PKCS#11 middleware (Bit4id, Actalis CyberMW, ...)
+  # installed by the official .rpm/.deb packages or under /opt by the
+  # Aruba/Dike/InfoCamere desktop bundles. Read-only access to the
+  # standard library and /opt directories covers every known layout
+  # without having to enumerate each driver here. Inside the sandbox
+  # the host paths resolve under /run/host/... — see
+  # `_flatpak_host_view` in core/detection.py.
+  - --filesystem=/usr/lib64:ro
+  - --filesystem=/usr/lib:ro
+  - --filesystem=/usr/local/lib:ro
+  - --filesystem=/opt:ro
   # Sigillum reads/writes its own config and trust bundles
   - --filesystem=xdg-config/sigillum:create
   - --filesystem=xdg-data/sigillum:create
