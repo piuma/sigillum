@@ -8,7 +8,7 @@ batch/automation workflows don't need to script-drive the GTK app.
 
 PIN and passwords are read in this priority order:
   1. The matching environment variable (`SIGILLUM_PIN`, `SIGILLUM_PASSWORD`,
-     `SIGILLUM_TSA_PASSWORD`).
+     `SIGILLUM_TSA_PASSWORD`, `SIGILLUM_OTP`).
   2. Interactive `getpass` prompt on a TTY.
 
 Exit codes:
@@ -133,6 +133,33 @@ def _resolve_credential_from_args(args, settings):
         provider = PKCS11Provider(settings.pkcs11_library)
         pin = _read_secret("SIGILLUM_PIN", _("Token PIN: "))
         cred = provider.unlock(settings.pkcs11_cert_id, pin)
+        return cred, provider
+    if settings.source == "csc":
+        if not (settings.csc_url and settings.csc_client_id
+                and settings.csc_credential_id):
+            raise RuntimeError(_(
+                "CSC remote signing not fully configured. "
+                "Run `sigillum config set --csc-url … --csc-client-id … "
+                "--csc-credential-id …` first."
+            ))
+        from .core.credentials import RemoteCSCProvider
+        from .core.csc import CSCClient, CSCConfig
+
+        cfg = CSCConfig(
+            base_url=settings.csc_url,
+            client_id=settings.csc_client_id,
+            client_secret=settings.csc_client_secret,
+        )
+        # OTP is fetched from $SIGILLUM_OTP or prompted at sign time —
+        # the lambda defers the lookup until endesive actually calls
+        # `hsm.sign()`, which is when the SMS / push has just landed.
+        otp_provider = lambda: _read_secret(  # noqa: E731
+            "SIGILLUM_OTP", _("OTP (signature activation): "),
+        )
+        provider = RemoteCSCProvider(
+            CSCClient(cfg), otp_provider=otp_provider, pin=settings.csc_pin,
+        )
+        cred = provider.unlock(settings.csc_credential_id, "")
         return cred, provider
 
     raise RuntimeError(_(
@@ -731,6 +758,73 @@ def _cmd_detect(args) -> int:
 
 
 # ---------------------------------------------------------------------------
+# `csc-list` subcommand
+# ---------------------------------------------------------------------------
+
+def _cmd_csc_list(args) -> int:
+    """Enumerate remote credentials available at the configured CSC service.
+
+    Intended for the one-time setup loop: after `sigillum config set
+    --csc-url … --csc-client-id … --csc-client-secret …`, call this to
+    see which `credential_id` to pin via `--csc-credential-id`.
+    """
+    from .core.csc import CSCClient, CSCConfig, CSCError
+    from .core.settings import load_settings
+
+    s = load_settings()
+    if not (s.csc_url and s.csc_client_id):
+        return _err(_(
+            "CSC service not configured. Run `sigillum config set "
+            "--csc-url URL --csc-client-id ID [--csc-client-secret SECRET]` "
+            "first."
+        ))
+
+    cfg = CSCConfig(
+        base_url=s.csc_url,
+        client_id=s.csc_client_id,
+        client_secret=s.csc_client_secret,
+    )
+    client = CSCClient(cfg)
+    try:
+        ids = client.list_credentials()
+    except CSCError as ex:
+        return _err(_("CSC list failed: {ex}").format(ex=ex), code=2)
+
+    if args.json:
+        out = []
+        for cid in ids:
+            try:
+                info = client.credential_info(cid)
+                out.append({
+                    "credential_id": cid,
+                    "description": info.description,
+                    "key_algo": info.key_algo,
+                    "key_length": info.key_length,
+                    "multisign": info.multisign,
+                })
+            except CSCError as ex:
+                out.append({"credential_id": cid, "error": str(ex)})
+        print(json.dumps(out, indent=2))
+        return 0
+
+    if not ids:
+        print(_("No CSC credentials visible to this client."))
+        return 0
+    print(_("Credentials at {url}:").format(url=s.csc_url))
+    for cid in ids:
+        try:
+            info = client.credential_info(cid)
+            print(f"  - {cid}")
+            if info.description:
+                print(f"      {info.description}")
+            print(f"      key={info.key_algo} ({info.key_length} bit), "
+                  f"multisign={info.multisign}")
+        except CSCError as ex:
+            print(f"  - {cid}  (info failed: {ex})")
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # `config` subcommand
 # ---------------------------------------------------------------------------
 
@@ -752,6 +846,12 @@ def _cmd_config(args) -> int:
                 "pkcs11_cert_id": settings.pkcs11_cert_id,
                 "pkcs11_cert_subject": settings.pkcs11_cert_subject,
                 "extra_pkcs11_search_paths": list(settings.extra_pkcs11_search_paths),
+                "csc_url": settings.csc_url,
+                "csc_client_id": settings.csc_client_id,
+                "csc_client_secret_set": bool(settings.csc_client_secret),
+                "csc_credential_id": settings.csc_credential_id,
+                "csc_pin_set": bool(settings.csc_pin),
+                "csc_cert_subject": settings.csc_cert_subject,
                 "tsa_url": settings.tsa_url,
                 "tsa_username": settings.tsa_username,
                 "tsa_password_set": bool(settings.tsa_password),
@@ -784,6 +884,13 @@ def _cmd_config(args) -> int:
             print(_("Extra PKCS#11 search paths:"))
             for d in settings.extra_pkcs11_search_paths:
                 print(f"  - {d}")
+        if settings.csc_url:
+            auth = _(" (secret set)") if settings.csc_client_secret else ""
+            print(_("CSC URL:         {url}").format(url=settings.csc_url))
+            print(_("CSC client_id:   {cid}{auth}").format(
+                cid=settings.csc_client_id or _("(not set)"), auth=auth))
+            print(_("CSC credential:  {cred}").format(
+                cred=settings.csc_credential_id or _("(not set)")))
         print(_("Primary country: {cc}").format(cc=primary))
         print(_("Active for verify: {cc}").format(cc=", ".join(active)))
         if settings.tsl_imports:
@@ -813,6 +920,34 @@ def _cmd_config(args) -> int:
         settings.pkcs11_library = args.lib
         settings.pkcs11_cert_id = args.cert_id
         settings.file_path = ""
+        changed = True
+    csc_touched = any(
+        getattr(args, name, None) is not None
+        for name in ("csc_url", "csc_client_id", "csc_client_secret",
+                     "csc_credential_id", "csc_pin")
+    )
+    if csc_touched:
+        if args.csc_url is not None:
+            url = args.csc_url.rstrip("/")
+            settings.csc_url = url
+        if args.csc_client_id is not None:
+            settings.csc_client_id = args.csc_client_id
+        if args.csc_client_secret is not None:
+            settings.csc_client_secret = args.csc_client_secret
+        if args.csc_credential_id is not None:
+            settings.csc_credential_id = args.csc_credential_id
+            settings.csc_cert_subject = ""   # invalidate cached display
+        if args.csc_pin is not None:
+            settings.csc_pin = args.csc_pin
+        # Switching to CSC clears the file/PKCS#11 source so the next
+        # `sigillum sign` doesn't accidentally fall back to a stale local
+        # configuration.
+        if settings.csc_url and settings.csc_client_id and settings.csc_credential_id:
+            settings.source = "csc"
+            settings.file_path = ""
+            settings.pkcs11_library = ""
+            settings.pkcs11_cert_id = ""
+            settings.pkcs11_cert_subject = ""
         changed = True
     if args.tsa is not None:
         settings.tsa_url = args.tsa
@@ -1028,6 +1163,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_det.add_argument("--json", action="store_true", help=_("JSON output"))
     p_det.set_defaults(func=_cmd_detect)
 
+    # csc-list
+    p_csc = sub.add_parser(
+        "csc-list",
+        help=_("list credentials available at the configured CSC v2 QTSP"),
+        description=_(
+            "Enumerate remote credentials at the QTSP set via "
+            "`sigillum config set --csc-url … --csc-client-id …`. "
+            "Use the resulting credential ID with "
+            "`sigillum config set --csc-credential-id ID` to make "
+            "Sigillum sign through it."
+        ),
+    )
+    p_csc.add_argument("--json", action="store_true", help=_("JSON output"))
+    p_csc.set_defaults(func=_cmd_csc_list)
+
     # config
     p_cfg = sub.add_parser(
         "config", help=_("show or modify persistent settings"),
@@ -1062,6 +1212,21 @@ def build_parser() -> argparse.ArgumentParser:
     cfg_set.add_argument("--remove-driver", dest="remove_driver", metavar="PATH",
                          action="append",
                          help=_("remove a previously added entry. Repeatable."))
+    cfg_set.add_argument("--csc-url", dest="csc_url", metavar="URL",
+                         help=_("base URL of the CSC v2 QTSP service "
+                                "(without trailing slash)"))
+    cfg_set.add_argument("--csc-client-id", dest="csc_client_id", metavar="ID",
+                         help=_("OAuth 2.0 client_id registered on the QTSP portal"))
+    cfg_set.add_argument("--csc-client-secret", dest="csc_client_secret",
+                         metavar="SECRET",
+                         help=_("OAuth 2.0 client_secret (omit for public clients)"))
+    cfg_set.add_argument("--csc-credential-id", dest="csc_credential_id",
+                         metavar="CID",
+                         help=_("CSC credential identifier; enumerate with "
+                                "`sigillum csc-list`"))
+    cfg_set.add_argument("--csc-pin", dest="csc_pin", metavar="PIN",
+                         help=_("long-term PIN if the QTSP requires one alongside "
+                                "the per-signature OTP"))
     p_cfg.set_defaults(func=_cmd_config, action=None, json=False)
 
     # gui

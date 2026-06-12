@@ -6,6 +6,7 @@
 _shtab_sigillum_commands() {
   local _commands=(
     "config:"
+    "csc-list:Enumerate remote credentials at the QTSP set via \`sigillum config set --csc-url \… --csc-client-id \…\`. Use the resulting credential ID with \`sigillum config set --csc-credential-id ID\` to make Sigillum sign through it."
     "decrypt:Decrypt a .enc (symmetric) or .p7e (CMS EnvelopedData) file."
     "detect:"
     "encrypt:Encrypt the input file. Default\: symmetric AES-256 with password."
@@ -51,9 +52,19 @@ _shtab_sigillum_config_set_options=(
   "--active-countries[comma-separated list of country codes to include in the verification trust store. Empty string falls back to the primary country.]:active_countries:"
   "*--add-driver[add a directory (recursively scanned), glob, or file to the PKCS\#11 autodetect search list. Tried before the built-in paths. Repeatable.]:add_driver:"
   "*--remove-driver[remove a previously added entry. Repeatable.]:remove_driver:"
+  "--csc-url[base URL of the CSC v2 QTSP service (without trailing slash)]:csc_url:"
+  "--csc-client-id[OAuth 2.0 client_id registered on the QTSP portal]:csc_client_id:"
+  "--csc-client-secret[OAuth 2.0 client_secret (omit for public clients)]:csc_client_secret:"
+  "--csc-credential-id[CSC credential identifier\; enumerate with \`sigillum csc-list\`]:csc_credential_id:"
+  "--csc-pin[long-term PIN if the QTSP requires one alongside the per-signature OTP]:csc_pin:"
 )
 
 _shtab_sigillum_config_show_options=(
+  "(- : *)"{-h,--help}"[show this help message and exit]"
+  "--json[JSON output]"
+)
+
+_shtab_sigillum_csc_list_options=(
   "(- : *)"{-h,--help}"[show this help message and exit]"
   "--json[JSON output]"
 )
@@ -161,6 +172,7 @@ _shtab_sigillum() {
       curcontext="${curcontext%:*:*}:_shtab_sigillum-$line[1]:"
       case $line[1] in
         config) _shtab_sigillum_config ;;
+        csc-list) _arguments -C -s $_shtab_sigillum_csc_list_options ;;
         decrypt) _arguments -C -s $_shtab_sigillum_decrypt_options ;;
         detect) _arguments -C -s $_shtab_sigillum_detect_options ;;
         encrypt) _arguments -C -s $_shtab_sigillum_encrypt_options ;;
