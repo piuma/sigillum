@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Smoke tests covering only the contract (types + signatures) of the CSC
-# client skeleton. Real network behaviour lives in test_client_live.py
-# (to be added in the next commit on this branch).
+# Contract-only smoke tests for the CSC client public types. Behavioural
+# tests against a mocked HTTP transport live in test_client.py.
 import pytest
 
 from sigillum.core.csc import (
@@ -39,24 +38,9 @@ def test_csc_error_is_runtime_error():
     assert issubclass(CSCError, RuntimeError)
 
 
-@pytest.mark.parametrize("method,args", [
-    ("authenticate", ()),
-    ("list_credentials", ()),
-    ("credential_info", ("cred-1",)),
-    ("authorize", ("cred-1", [b"\x00" * 32], "123456")),
-    ("sign_hash", (
-        "cred-1",
-        SAD(value="sad", expires_in=300),
-        [b"\x00" * 32],
-        "2.16.840.1.101.3.4.2.1",   # SHA-256
-        "1.2.840.113549.1.1.11",    # sha256WithRSAEncryption
-    )),
-])
-def test_client_methods_are_skeletons(method, args):
-    """Every method must be present and raise NotImplementedError until
-    the next commit fills it in. Guarantees the public surface is stable
-    before we ship behaviour."""
+def test_client_constructible():
+    """Smoke: the client builds and starts with an empty token cache."""
     cli = CSCClient(CSCConfig(base_url="https://example.test/csc/v2",
                               client_id="x"))
-    with pytest.raises(NotImplementedError):
-        getattr(cli, method)(*args)
+    assert cli._access_token == ""
+    assert isinstance(SAD(value="x", expires_in=300), SAD)
