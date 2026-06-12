@@ -48,6 +48,11 @@ dev = [
     "ruff>=0.4",
     "shtab>=1.6",  # used to regenerate completion/bash + completion/zsh
 ]
+# Cloud Signature Consortium (CSC v2 / ETSI TS 119 432) remote signing.
+# `requests` is already in the core deps so no transport library is
+# pulled in here yet; this extra is the stable hook future versions will
+# attach optional CSC-only dependencies to (e.g. requests-oauthlib).
+csc = []
 
 [project.scripts]
 sigillum = "sigillum.__main__:main"
