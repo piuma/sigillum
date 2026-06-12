@@ -1904,8 +1904,18 @@ class SignView(Gtk.Box):
         if s.is_configured():
             self._device_label.set_markup(_("<b>Device:</b> {value}").format(value=s.describe()))
             self._sign_button.set_sensitive(True)
-            self._secret.set_sensitive(True)
-            self._secret_label.set_text(_("PIN:") if s.source == "pkcs11" else _("Password:"))
+            # CSC remote signing collects the OTP from a dialog popped by
+            # `hsm.sign()` at signing time — no static secret is consumed
+            # in the Sign tab, so hide the entry row completely to avoid
+            # confusing users into typing the OTP here.
+            if s.source == "csc":
+                self._secret_row.hide()
+            else:
+                self._secret_row.show()
+                self._secret.set_sensitive(True)
+                self._secret_label.set_text(
+                    _("PIN:") if s.source == "pkcs11" else _("Password:")
+                )
         else:
             self._device_label.set_markup(
                 _("<span foreground='#c33'>No device configured — "
