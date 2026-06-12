@@ -286,13 +286,17 @@ class SettingsView(Gtk.Box):
         left out — they don't produce unsaved state."""
         self._radio_file.connect("toggled", self._mark_dirty)
         self._radio_token.connect("toggled", self._mark_dirty)
+        self._radio_csc.connect("toggled", self._mark_dirty)
         self._cert_chooser.connect("file-set", self._mark_dirty)
         self._vis_sig_image.connect("file-set", self._mark_dirty)
         for entry in (self._pkcs11_lib, self._tsa_url,
-                      self._tsa_username, self._tsa_password):
+                      self._tsa_username, self._tsa_password,
+                      self._csc_url, self._csc_client_id,
+                      self._csc_client_secret, self._csc_pin):
             entry.connect("changed", self._mark_dirty)
         self._token_cert_combo.connect("changed", self._mark_dirty)
         self._tsa_preset_combo.connect("changed", self._mark_dirty)
+        self._csc_cred_combo.connect("changed", self._mark_dirty)
 
     def confirm_leave(self) -> bool:
         """Called when the user tries to leave the Settings tab.
@@ -363,14 +367,20 @@ class SettingsView(Gtk.Box):
         self._radio_token = Gtk.RadioButton.new_with_label_from_widget(
             self._radio_file, _("PKCS#11 token")
         )
+        self._radio_csc = Gtk.RadioButton.new_with_label_from_widget(
+            self._radio_file, _("Remote service (CSC)")
+        )
         self._radio_file.connect("toggled", self._on_source_changed)
+        self._radio_csc.connect("toggled", self._on_source_changed)
         src_row.pack_start(self._radio_file, False, False, 0)
         src_row.pack_start(self._radio_token, False, False, 0)
+        src_row.pack_start(self._radio_csc, False, False, 0)
         page.pack_start(src_row, False, False, 0)
 
         self._source_stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.NONE)
         self._source_stack.add_named(self._build_file_view(), "file")
         self._source_stack.add_named(self._build_token_view(), "pkcs11")
+        self._source_stack.add_named(self._build_csc_view(), "csc")
         page.pack_start(self._source_stack, False, False, 0)
 
         # Status label for device configuration messages
@@ -715,6 +725,73 @@ class SettingsView(Gtk.Box):
 
     # ----- subview construction -----
 
+    def _build_csc_view(self) -> Gtk.Widget:
+        """Form for Cloud Signature Consortium (CSC v2) remote signing.
+
+        Holds the URL + OAuth client_id/secret + chosen credential_id.
+        The credential dropdown is populated on demand by a *Discover*
+        button (talks to the QTSP) — we avoid auto-fetching at load
+        time so opening Settings stays offline-only.
+        """
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, margin_top=6)
+
+        intro = Gtk.Label(xalign=0, wrap=True)
+        intro.set_markup(_(
+            "<small>Cloud Signature Consortium (ETSI TS 119 432). "
+            "Register an OAuth client on the QTSP portal, paste the "
+            "service URL and the credentials below, then click "
+            "<b>Discover</b> to pick a remote signing credential.</small>"
+        ))
+        box.pack_start(intro, False, False, 0)
+
+        # Plain string entries
+        def _row(label_text):
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            row.pack_start(Gtk.Label(label=label_text, xalign=0,
+                                     width_chars=14), False, False, 0)
+            ent = Gtk.Entry()
+            row.pack_start(ent, True, True, 0)
+            box.pack_start(row, False, False, 0)
+            return ent
+
+        self._csc_url = _row(_("Service URL:"))
+        self._csc_url.set_placeholder_text("https://api.qtsp.example/csc/v2")
+        self._csc_client_id = _row(_("Client ID:"))
+        self._csc_client_secret = _make_password_entry(_toggle_password_visibility)
+        secret_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        secret_row.pack_start(Gtk.Label(label=_("Client secret:"), xalign=0,
+                                        width_chars=14), False, False, 0)
+        secret_row.pack_start(self._csc_client_secret, True, True, 0)
+        box.pack_start(secret_row, False, False, 0)
+        self._csc_pin = _make_password_entry(_toggle_password_visibility)
+        pin_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        pin_row.pack_start(Gtk.Label(label=_("Long-term PIN:"), xalign=0,
+                                     width_chars=14), False, False, 0)
+        pin_row.pack_start(self._csc_pin, True, True, 0)
+        pin_hint = Gtk.Label(xalign=0)
+        pin_hint.set_markup(_("<small>(optional)</small>"))
+        pin_row.pack_start(pin_hint, False, False, 0)
+        box.pack_start(pin_row, False, False, 0)
+
+        # Discover + combo of credentials
+        disc_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self._csc_discover = Gtk.Button.new_with_label(_("🔍  Discover credentials"))
+        self._csc_discover.get_style_context().add_class("suggested-action")
+        self._csc_discover.connect("clicked", self._on_csc_discover)
+        disc_row.pack_start(self._csc_discover, False, False, 0)
+        self._csc_status = Gtk.Label(xalign=0)
+        disc_row.pack_start(self._csc_status, True, True, 6)
+        box.pack_start(disc_row, False, False, 0)
+
+        box.pack_start(Gtk.Label(label=_("Credential:"), xalign=0),
+                       False, False, 0)
+        self._csc_cred_combo = Gtk.ComboBoxText()
+        box.pack_start(self._csc_cred_combo, False, False, 0)
+        # ids parallel to the combo items (avoids re-parsing the label)
+        self._csc_cred_ids: list[str] = []
+        self._csc_cred_subjects: list[str] = []
+        return box
+
     def _build_file_view(self) -> Gtk.Widget:
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, margin_top=6)
         box.pack_start(
@@ -872,8 +949,71 @@ class SettingsView(Gtk.Box):
     # ----- event handlers -----
 
     def _on_source_changed(self, _radio):
-        name = "file" if self._radio_file.get_active() else "pkcs11"
+        if self._radio_file.get_active():
+            name = "file"
+        elif self._radio_csc.get_active():
+            name = "csc"
+        else:
+            name = "pkcs11"
         self._source_stack.set_visible_child_name(name)
+
+    def _on_csc_discover(self, _button):
+        """Talk to the QTSP to populate the credential dropdown.
+
+        Run inline (no threading): network call is short and Settings
+        is a modal-ish context where a few seconds of unresponsiveness
+        are acceptable. If it becomes a problem we'll move it to a
+        worker thread the way the TSL refresh does.
+        """
+        from sigillum.core.csc import CSCClient, CSCConfig, CSCError
+
+        url = self._csc_url.get_text().strip().rstrip("/")
+        cid = self._csc_client_id.get_text().strip()
+        if not (url and cid):
+            _show_error(self._parent, _(
+                "Fill in the service URL and the client ID first."
+            ))
+            return
+
+        self._csc_status.set_markup(_("<i>Connecting…</i>"))
+        while Gtk.events_pending():
+            Gtk.main_iteration_do(False)
+        try:
+            cli = CSCClient(CSCConfig(
+                base_url=url,
+                client_id=cid,
+                client_secret=self._csc_client_secret.get_text(),
+            ))
+            ids = cli.list_credentials()
+        except (CSCError, ValueError) as ex:
+            self._csc_status.set_markup("")
+            _show_error(self._parent, _("Discovery failed: {ex}").format(ex=ex))
+            return
+
+        self._csc_cred_combo.remove_all()
+        self._csc_cred_ids = []
+        self._csc_cred_subjects = []
+        for cred_id in ids:
+            try:
+                info = cli.credential_info(cred_id)
+                subject = info.description or cred_id
+            except CSCError:
+                subject = cred_id
+            self._csc_cred_combo.append_text(f"{subject}  [{cred_id}]")
+            self._csc_cred_ids.append(cred_id)
+            self._csc_cred_subjects.append(subject)
+        if self._csc_cred_ids:
+            self._csc_cred_combo.set_active(0)
+            self._csc_status.set_markup(
+                _("<span foreground='#2a7'>✓ Found {n} credential(s)</span>").format(
+                    n=len(self._csc_cred_ids)
+                )
+            )
+        else:
+            self._csc_status.set_markup(
+                _("<span foreground='#c33'>No credentials visible to this client.</span>")
+            )
+        self._mark_dirty()
 
     def _on_refresh_tokens(self, _button):
         self._token_cert_combo.remove_all()
@@ -1441,11 +1581,31 @@ class SettingsView(Gtk.Box):
                 self._saved_cert_hint.set_markup(
                     _("<i>Press refresh to change the certificate.</i>")
                 )
+        elif s.source == "csc":
+            self._radio_csc.set_active(True)
+            self._source_stack.set_visible_child_name("csc")
         else:
             self._radio_file.set_active(True)
             self._source_stack.set_visible_child_name("file")
             if s.file_path and Path(s.file_path).exists():
                 self._cert_chooser.set_filename(s.file_path)
+
+        # CSC fields always populated, regardless of source — so the user
+        # can flip back to "Remote service" without retyping URL / IDs.
+        self._csc_url.set_text(s.csc_url)
+        self._csc_client_id.set_text(s.csc_client_id)
+        self._csc_client_secret.set_text(s.csc_client_secret)
+        self._csc_pin.set_text(s.csc_pin)
+        # Pre-populate the combo with the saved credential so it shows up
+        # even before the user clicks Discover. Discovery (network call)
+        # is left explicit on purpose.
+        if s.csc_credential_id:
+            label = s.csc_cert_subject or s.csc_credential_id
+            self._csc_cred_combo.remove_all()
+            self._csc_cred_combo.append_text(f"{label}  [{s.csc_credential_id}]")
+            self._csc_cred_ids = [s.csc_credential_id]
+            self._csc_cred_subjects = [s.csc_cert_subject]
+            self._csc_cred_combo.set_active(0)
 
         # TSA: populate URL entry; let _on_tsa_url_edited pick the preset combo.
         if s.tsa_url:
@@ -1504,6 +1664,34 @@ class SettingsView(Gtk.Box):
                 return None
             s.source = "file"
             s.file_path = cert
+            s.pkcs11_library = ""
+            s.pkcs11_cert_id = ""
+            s.pkcs11_cert_subject = ""
+            return s
+
+        if self._radio_csc.get_active():
+            url = self._csc_url.get_text().strip().rstrip("/")
+            cid = self._csc_client_id.get_text().strip()
+            active = self._csc_cred_combo.get_active()
+            if not (url and cid):
+                _show_error(self._parent, _(
+                    "Provide at least the CSC service URL and client ID."
+                ))
+                return None
+            if active < 0 or active >= len(self._csc_cred_ids):
+                _show_error(self._parent, _(
+                    "Click Discover and choose a remote credential."
+                ))
+                return None
+            s.source = "csc"
+            s.csc_url = url
+            s.csc_client_id = cid
+            s.csc_client_secret = self._csc_client_secret.get_text()
+            s.csc_pin = self._csc_pin.get_text()
+            s.csc_credential_id = self._csc_cred_ids[active]
+            s.csc_cert_subject = self._csc_cred_subjects[active]
+            # Disambiguate by clearing local-only fields.
+            s.file_path = ""
             s.pkcs11_library = ""
             s.pkcs11_cert_id = ""
             s.pkcs11_cert_subject = ""
@@ -2013,6 +2201,27 @@ class SignView(Gtk.Box):
             if s.source == "file":
                 provider = FileProvider(s.file_path)
                 credential = provider.unlock(s.file_path, secret)
+            elif s.source == "csc":
+                from sigillum.core.credentials import RemoteCSCProvider
+                from sigillum.core.csc import CSCClient, CSCConfig
+
+                cfg = CSCConfig(
+                    base_url=s.csc_url,
+                    client_id=s.csc_client_id,
+                    client_secret=s.csc_client_secret,
+                )
+                # endesive calls hsm.sign() potentially multiple times per
+                # document (e.g. PAdES + TSA). Each call needs a fresh OTP,
+                # so pop a dialog from inside the otp_provider — that way
+                # the user is asked only when an OTP is actually required.
+                otp_provider = lambda: _ask_password(   # noqa: E731
+                    self._parent,
+                    _("Enter the OTP sent by the QTSP for signature activation"),
+                ) or ""
+                provider = RemoteCSCProvider(
+                    CSCClient(cfg), otp_provider=otp_provider, pin=s.csc_pin,
+                )
+                credential = provider.unlock(s.csc_credential_id, "")
             else:
                 provider = PKCS11Provider(s.pkcs11_library)
                 credential = provider.unlock(s.pkcs11_cert_id, secret)
