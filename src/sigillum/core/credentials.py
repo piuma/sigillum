@@ -333,9 +333,8 @@ _HASH_OID_BY_NAME: dict[str, str] = {
     "sha512": "2.16.840.1.101.3.4.2.3",
 }
 
-# RSA + <hash> → signature-algorithm OID (PKCS#1 v1.5). Used to fill the
-# `signAlgo` field of `/signatures/signHash`. ECDSA + hash is added when
-# we test against a QTSP that issues EC credentials.
+# RSA + <hash> → signature-algorithm OID (RFC 8017 PKCS#1 v1.5). Used to
+# fill the `signAlgo` field of `/signatures/signHash`.
 _RSA_SIGN_OID_BY_HASH: dict[str, str] = {
     "sha1":   "1.2.840.113549.1.1.5",
     "sha256": "1.2.840.113549.1.1.11",
@@ -343,8 +342,27 @@ _RSA_SIGN_OID_BY_HASH: dict[str, str] = {
     "sha512": "1.2.840.113549.1.1.13",
 }
 
-# rfc 8017 RSA / 5480 ECDSA
+# RSA-PSS (RFC 8017 §8.1) — a single OID, hash and MGF1 hash live in the
+# `signAlgoParams` payload alongside `signAlgo`. CSC v2 §11.10 expects a
+# base64-DER-encoded `RSASSA-PSS-params` structure there; we pass the
+# minimum (mgf=mgf1, hashAlgo=<picked>, saltLength=<digest size>) so the
+# QTSP picks the canonical defaults for the chosen hash.
+_RSA_PSS_OID = "1.2.840.113549.1.1.10"
+
+# ECDSA + <hash> → signature-algorithm OID (RFC 5480).
+_ECDSA_SIGN_OID_BY_HASH: dict[str, str] = {
+    "sha1":   "1.2.840.10045.4.1",
+    "sha256": "1.2.840.10045.4.3.2",
+    "sha384": "1.2.840.10045.4.3.3",
+    "sha512": "1.2.840.10045.4.3.4",
+}
+
+# RFC 8017 RSA / 5480 ECDSA, plus PSS as exposed by some QTSPs that pre-
+# declare the credential is PSS-only (no choice of v1.5 vs PSS at sign
+# time). Both raw RSA and PSS map to the same key type, so we tolerate
+# either as a key_algo value.
 _KEY_ALGO_RSA = "1.2.840.113549.1.1.1"
+_KEY_ALGO_RSA_PSS = "1.2.840.113549.1.1.10"
 _KEY_ALGO_EC = "1.2.840.10045.2.1"
 
 
@@ -393,6 +411,7 @@ class _RemoteCSCHSM:
         cert_der: bytes,
         otp_provider: Callable[[], str],
         pin: str = "",
+        prefer_pss: bool = False,
     ) -> None:
         self._client = client
         self._cred_id = credential_id
@@ -400,6 +419,10 @@ class _RemoteCSCHSM:
         self._cert_der = cert_der
         self._otp_provider = otp_provider
         self._pin = pin
+        # Some PAdES baseline profiles require RSA-PSS (B-LTA 2023). When
+        # the caller forces it via *prefer_pss* we ask the QTSP for PSS
+        # even on credentials advertised as plain RSA.
+        self._prefer_pss = prefer_pss
 
     # ----- BaseHSM contract -----
 
@@ -427,17 +450,34 @@ class _RemoteCSCHSM:
 
     def _sign_algo_oid(self, hashalgo: str) -> str:
         """Pick the QTSP-side signAlgo OID matching this credential's
-        key + the requested hash. Currently only RSA-PKCS1v15 is wired
-        up; ECDSA is straightforward to add once a sandbox issues an EC
-        credential to test against."""
-        if self._info.key_algo == _KEY_ALGO_RSA:
+        key + the requested hash.
+
+        Supports:
+          - RSA (key OID 1.2.840.113549.1.1.1): RFC 8017 v1.5
+            ``rsa-with-<hash>`` OIDs, or RSA-PSS (1.2.840.113549.1.1.10)
+            when ``prefer_pss`` is set or the credential is registered
+            as PSS-only at the QTSP.
+          - ECDSA (key OID 1.2.840.10045.2.1): RFC 5480
+            ``ecdsa-with-<hash>`` OIDs.
+        """
+        algo = self._info.key_algo
+        if algo == _KEY_ALGO_RSA:
+            if self._prefer_pss:
+                return _RSA_PSS_OID
             oid = _RSA_SIGN_OID_BY_HASH.get(hashalgo)
             if oid is None:
                 raise ValueError(_("unsupported RSA+{h} combination").format(h=hashalgo))
             return oid
+        if algo == _KEY_ALGO_RSA_PSS:
+            return _RSA_PSS_OID
+        if algo == _KEY_ALGO_EC:
+            oid = _ECDSA_SIGN_OID_BY_HASH.get(hashalgo)
+            if oid is None:
+                raise ValueError(_("unsupported ECDSA+{h} combination").format(h=hashalgo))
+            return oid
         raise NotImplementedError(_(
             "key algorithm not yet supported by the CSC adapter: {algo}"
-        ).format(algo=self._info.key_algo))
+        ).format(algo=algo))
 
 
 class RemoteCSCProvider(CredentialProvider):
@@ -456,10 +496,12 @@ class RemoteCSCProvider(CredentialProvider):
         client,                    # CSCClient
         otp_provider: Callable[[], str],
         pin: str = "",
+        prefer_pss: bool = False,
     ) -> None:
         self._client = client
         self._otp_provider = otp_provider
         self._pin = pin
+        self._prefer_pss = prefer_pss
 
     def list_certificates(self) -> Sequence[CertificateInfo]:
         out: list[CertificateInfo] = []
@@ -506,5 +548,6 @@ class RemoteCSCProvider(CredentialProvider):
             cert_der=cert_der,
             otp_provider=self._otp_provider,
             pin=self._pin,
+            prefer_pss=self._prefer_pss,
         )
         return SigningCredential(certificate=leaf, chain=chain, hsm=hsm)

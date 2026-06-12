@@ -167,12 +167,77 @@ def test_hsm_sign_rejects_unknown_hash(cert_material):
         cred.hsm.sign(b"", b"data", "md5")
 
 
+def test_hsm_sign_uses_ecdsa_oid_for_ec_credential(cert_material):
+    cert_pem, _ = cert_material
+    info = CSCCredentialInfo(
+        credential_id="cred-1",
+        cert_chain_pem=[cert_pem],
+        key_algo="1.2.840.10045.2.1",   # id-ecPublicKey (RFC 5480)
+        key_length=256,
+        hash_algos=["2.16.840.1.101.3.4.2.1"],
+    )
+    client = MagicMock()
+    client.credential_info.return_value = info
+    client.authorize.return_value = SAD(value="sad", expires_in=300)
+    client.sign_hash.return_value = [b"ecdsa-sig"]
+
+    cred = RemoteCSCProvider(client, otp_provider=lambda: "0").unlock("cred-1", "")
+    assert cred.hsm.sign(b"", b"data", "sha256") == b"ecdsa-sig"
+    # The signAlgo must be the ECDSA-with-SHA-256 OID, not the RSA one.
+    args, _kw = client.sign_hash.call_args
+    assert args[4] == "1.2.840.10045.4.3.2"
+
+
+def test_hsm_sign_uses_pss_oid_when_key_is_pss(cert_material):
+    cert_pem, _ = cert_material
+    info = CSCCredentialInfo(
+        credential_id="cred-1",
+        cert_chain_pem=[cert_pem],
+        key_algo="1.2.840.113549.1.1.10",   # id-RSASSA-PSS
+        key_length=2048,
+        hash_algos=["2.16.840.1.101.3.4.2.1"],
+    )
+    client = MagicMock()
+    client.credential_info.return_value = info
+    client.authorize.return_value = SAD(value="sad", expires_in=300)
+    client.sign_hash.return_value = [b"pss-sig"]
+
+    cred = RemoteCSCProvider(client, otp_provider=lambda: "0").unlock("cred-1", "")
+    cred.hsm.sign(b"", b"data", "sha256")
+    args, _kw = client.sign_hash.call_args
+    assert args[4] == "1.2.840.113549.1.1.10"
+
+
+def test_hsm_sign_prefer_pss_overrides_rsa_credential(cert_material):
+    """If the QTSP advertises plain RSA but the user (or a profile)
+    asks for PSS, the signAlgo OID must switch to id-RSASSA-PSS."""
+    cert_pem, _ = cert_material
+    info = CSCCredentialInfo(
+        credential_id="cred-1",
+        cert_chain_pem=[cert_pem],
+        key_algo="1.2.840.113549.1.1.1",    # plain RSA
+        key_length=2048,
+        hash_algos=["2.16.840.1.101.3.4.2.1"],
+    )
+    client = MagicMock()
+    client.credential_info.return_value = info
+    client.authorize.return_value = SAD(value="sad", expires_in=300)
+    client.sign_hash.return_value = [b"pss-sig"]
+
+    cred = RemoteCSCProvider(
+        client, otp_provider=lambda: "0", prefer_pss=True,
+    ).unlock("cred-1", "")
+    cred.hsm.sign(b"", b"data", "sha256")
+    args, _kw = client.sign_hash.call_args
+    assert args[4] == "1.2.840.113549.1.1.10"
+
+
 def test_hsm_sign_rejects_unsupported_key_algo(cert_material):
     cert_pem, _ = cert_material
     info = CSCCredentialInfo(
         credential_id="cred-1",
         cert_chain_pem=[cert_pem],
-        key_algo="1.2.840.10045.2.1",   # ECDSA — not wired up yet
+        key_algo="1.2.3.4.5",   # bogus
         key_length=256,
         hash_algos=[],
     )
