@@ -6,10 +6,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Sequence
 
 from cryptography import x509
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import (
+    Encoding,
     load_pem_private_key,
     pkcs12,
 )
@@ -317,3 +319,192 @@ class FileProvider(CredentialProvider):
                 )
             key = load_pem_private_key(key_path.read_bytes(), password=password)
         return SigningCredential(certificate=cert, chain=[], private_key=key)
+
+
+# ---------------------------------------------------------------------------
+# Cloud Signature Consortium (CSC v2) remote signing
+# ---------------------------------------------------------------------------
+
+# Hash names used inside endesive / Sigillum → IETF OIDs the QTSP wants.
+_HASH_OID_BY_NAME: dict[str, str] = {
+    "sha1":   "1.3.14.3.2.26",
+    "sha256": "2.16.840.1.101.3.4.2.1",
+    "sha384": "2.16.840.1.101.3.4.2.2",
+    "sha512": "2.16.840.1.101.3.4.2.3",
+}
+
+# RSA + <hash> → signature-algorithm OID (PKCS#1 v1.5). Used to fill the
+# `signAlgo` field of `/signatures/signHash`. ECDSA + hash is added when
+# we test against a QTSP that issues EC credentials.
+_RSA_SIGN_OID_BY_HASH: dict[str, str] = {
+    "sha1":   "1.2.840.113549.1.1.5",
+    "sha256": "1.2.840.113549.1.1.11",
+    "sha384": "1.2.840.113549.1.1.12",
+    "sha512": "1.2.840.113549.1.1.13",
+}
+
+# rfc 8017 RSA / 5480 ECDSA
+_KEY_ALGO_RSA = "1.2.840.113549.1.1.1"
+_KEY_ALGO_EC = "1.2.840.10045.2.1"
+
+
+def _digest(data: bytes, hashalgo: str) -> bytes:
+    """Compute the digest of *data* under *hashalgo* (sha1/256/384/512).
+
+    Mirrors the algorithm names endesive uses so signers can stay
+    unaware of whether the bytes will be signed locally or via CSC.
+    """
+    algo = hashalgo.lower()
+    h_obj_by_name = {
+        "sha1":   hashes.SHA1(),
+        "sha256": hashes.SHA256(),
+        "sha384": hashes.SHA384(),
+        "sha512": hashes.SHA512(),
+    }
+    h = h_obj_by_name.get(algo)
+    if h is None:
+        raise ValueError(_("unsupported hash algorithm: {h}").format(h=hashalgo))
+    digest = hashes.Hash(h)
+    digest.update(data)
+    return digest.finalize()
+
+
+class _RemoteCSCHSM:
+    """Adapter exposing endesive's BaseHSM contract over a CSC v2 service.
+
+    endesive calls ``certificate()`` to learn the leaf cert and
+    ``sign(keyid, data, hashalgo)`` to sign a SignerInfo blob with a
+    given hash. We translate that into:
+
+      1. local digest of *data*
+      2. ``/credentials/authorize`` → SAD, paying an OTP each time
+      3. ``/signatures/signHash`` → raw signature bytes
+
+    The OTP is obtained lazily through *otp_provider*, a callable
+    supplied by the caller (CLI prompt, GUI dialog, ...) — keeping
+    the credentials layer free of any UI dependency.
+    """
+
+    def __init__(
+        self,
+        client,                    # CSCClient
+        credential_id: str,
+        info,                      # CSCCredentialInfo
+        cert_der: bytes,
+        otp_provider: Callable[[], str],
+        pin: str = "",
+    ) -> None:
+        self._client = client
+        self._cred_id = credential_id
+        self._info = info
+        self._cert_der = cert_der
+        self._otp_provider = otp_provider
+        self._pin = pin
+
+    # ----- BaseHSM contract -----
+
+    def certificate(self):
+        # PKCS#11 hands back (keyid, der) — CSC has no keyid concept so
+        # we re-use the credentialID, which keeps endesive's debug logs
+        # informative without affecting anything functionally.
+        return self._cred_id.encode(), self._cert_der
+
+    def sign(self, keyid, data, hashalgo):  # noqa: ARG002 — keyid unused
+        h_oid = _HASH_OID_BY_NAME.get(hashalgo.lower())
+        if h_oid is None:
+            raise ValueError(_("unsupported hash algorithm: {h}").format(h=hashalgo))
+        sign_oid = self._sign_algo_oid(hashalgo.lower())
+
+        digest = _digest(data, hashalgo)
+        otp = self._otp_provider()
+        sad = self._client.authorize(
+            self._cred_id, [digest], otp=otp, pin=self._pin,
+        )
+        sigs = self._client.sign_hash(
+            self._cred_id, sad, [digest], h_oid, sign_oid,
+        )
+        return sigs[0]
+
+    def _sign_algo_oid(self, hashalgo: str) -> str:
+        """Pick the QTSP-side signAlgo OID matching this credential's
+        key + the requested hash. Currently only RSA-PKCS1v15 is wired
+        up; ECDSA is straightforward to add once a sandbox issues an EC
+        credential to test against."""
+        if self._info.key_algo == _KEY_ALGO_RSA:
+            oid = _RSA_SIGN_OID_BY_HASH.get(hashalgo)
+            if oid is None:
+                raise ValueError(_("unsupported RSA+{h} combination").format(h=hashalgo))
+            return oid
+        raise NotImplementedError(_(
+            "key algorithm not yet supported by the CSC adapter: {algo}"
+        ).format(algo=self._info.key_algo))
+
+
+class RemoteCSCProvider(CredentialProvider):
+    """Credentials hosted by a CSC v2-compliant QTSP (firma qualificata remota).
+
+    Sigillum never sees the private key — every signature round-trips
+    to the QTSP, authorised by a fresh SAD (one OTP per signing call).
+    See :class:`_RemoteCSCHSM` for the wire format.
+
+    *otp_provider* is called every time the signer requests a signature
+    on a hash. Supply a CLI prompt or a GUI dialog from the caller.
+    """
+
+    def __init__(
+        self,
+        client,                    # CSCClient
+        otp_provider: Callable[[], str],
+        pin: str = "",
+    ) -> None:
+        self._client = client
+        self._otp_provider = otp_provider
+        self._pin = pin
+
+    def list_certificates(self) -> Sequence[CertificateInfo]:
+        out: list[CertificateInfo] = []
+        for cred_id in self._client.list_credentials():
+            try:
+                info = self._client.credential_info(cred_id)
+                leaf_pem = info.cert_chain_pem[0].encode()
+                cert = x509.load_pem_x509_certificate(leaf_pem)
+            except Exception:  # noqa: BLE001 — skip the broken credential
+                continue
+            out.append(CertificateInfo(
+                id=cred_id,
+                subject=cert.subject.rfc4514_string(),
+                issuer=cert.issuer.rfc4514_string(),
+                serial=format(cert.serial_number, "x"),
+                not_before=cert.not_valid_before_utc.isoformat(),
+                not_after=cert.not_valid_after_utc.isoformat(),
+            ))
+        return out
+
+    def unlock(self, cert_id: str, secret: str) -> SigningCredential:
+        """Resolve a remote credential into a :class:`SigningCredential`.
+
+        *secret* is unused for CSC: the per-signature OTP is collected
+        lazily via *otp_provider* (set at construction). When the QTSP
+        also requires a long-term PIN alongside the OTP, set it via
+        the ``pin=`` argument of the provider constructor.
+        """
+        del secret  # CSC has no static credential password
+        info = self._client.credential_info(cert_id)
+        if not info.cert_chain_pem:
+            raise ValueError(_("CSC credential {id} returned an empty chain").format(id=cert_id))
+
+        leaf = x509.load_pem_x509_certificate(info.cert_chain_pem[0].encode())
+        chain = [
+            x509.load_pem_x509_certificate(pem.encode())
+            for pem in info.cert_chain_pem[1:]
+        ]
+        cert_der = leaf.public_bytes(Encoding.DER)
+        hsm = _RemoteCSCHSM(
+            client=self._client,
+            credential_id=cert_id,
+            info=info,
+            cert_der=cert_der,
+            otp_provider=self._otp_provider,
+            pin=self._pin,
+        )
+        return SigningCredential(certificate=leaf, chain=chain, hsm=hsm)
