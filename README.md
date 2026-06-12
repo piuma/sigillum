@@ -83,6 +83,33 @@ sudo apt install ./sigillum_<VERSION>_all.deb
 
 The packages declare all runtime dependencies (GTK 3, Poppler, `python3-endesive`, etc.) so no virtualenv is needed. Shell completion (bash and zsh) is installed automatically. To build the packages yourself instead of downloading them, see [`packaging/README.md`](packaging/README.md).
 
+#### Distro compatibility matrix
+
+Sigillum needs `python3-cryptography >= 42.0`. Older distros ship 38–41:
+
+| Distro                   | `python3-cryptography` | `.deb`/`.rpm` |
+|---------------------------------|------:|-------------------------|
+| Debian 12 (Bookworm)            | 38.0  | ❌ — use **pipx** below |
+| Ubuntu 22.04 LTS (Jammy)        | 3.4   | ❌ — use **pipx** below |
+| Ubuntu 24.04 LTS (Noble)        | 41.0  | ❌ — use **pipx** below |
+| Linux Mint 22 (on 24.04)        | 41.0  | ❌ — use **pipx** below |
+| Debian 13 (Trixie)              | 43.0  | ✅                      |
+| Ubuntu 24.10 (Oracular) / 25.04 | 43.0+ | ✅                      |
+| Linux Mint 22.1+                | 43.0+ | ✅                      |
+| Fedora 41+                      | 43.0+ | ✅                      |
+
+On distros marked ❌ the system `python3-cryptography` is too old to satisfy the `.deb` dependency. Install via **pipx** instead — pip pulls a recent `cryptography` wheel into an isolated environment without touching system packages:
+
+```bash
+sudo apt install -y pipx \
+    python3-gi gir1.2-gtk-3.0 gir1.2-poppler-0.18 \
+    build-essential python3-dev swig
+
+pipx install --system-site-packages sigillum
+```
+
+`--system-site-packages` lets pipx reuse `PyGObject` from the host so it doesn't have to build it from source.
+
 ### Shell completion (PyPI / source install)
 
 `.deb` and `.rpm` packages install bash and zsh completions automatically. With `pip install` you can enable them manually from the source tree:
