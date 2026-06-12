@@ -24,9 +24,12 @@ when we wire in the GUI.
 from __future__ import annotations
 
 import base64
+import hashlib
+import secrets
 import time
 from dataclasses import dataclass
 from typing import Any, Sequence
+from urllib.parse import urlencode
 
 import requests
 
@@ -90,6 +93,46 @@ class SAD:
     expires_in: int
 
 
+@dataclass(frozen=True)
+class PKCEPair:
+    """RFC 7636 verifier + challenge pair for the authorization-code flow.
+
+    Generate with :func:`generate_pkce`; pass the *challenge* in the
+    `authorize` URL and the *verifier* when exchanging the code for a
+    token. Keep them in sync — they're proof that the same client
+    initiated both halves of the flow.
+    """
+    verifier: str
+    challenge: str
+    method: str = "S256"
+
+
+def generate_pkce() -> PKCEPair:
+    """Produce a fresh RFC 7636 PKCE pair (S256 method).
+
+    Verifier is 64 url-safe characters of CSPRNG entropy; challenge is
+    the base64url-no-pad encoding of its SHA-256. Both sides of the
+    flow refer to this *same* pair — typical use:
+
+      pkce = generate_pkce()
+      url  = client.build_authorize_url(..., code_challenge=pkce.challenge)
+      ... user logs in, browser redirects back with ?code=...
+      token = client.exchange_code(code, redirect_uri, pkce.verifier)
+    """
+    verifier = secrets.token_urlsafe(48)[:64]
+    digest = hashlib.sha256(verifier.encode("ascii")).digest()
+    challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    return PKCEPair(verifier=verifier, challenge=challenge)
+
+
+@dataclass(frozen=True)
+class OAuthTokens:
+    """Result of a code-for-token exchange (or a refresh)."""
+    access_token: str
+    refresh_token: str  # empty if the QTSP doesn't issue one
+    expires_in: int     # access token TTL in seconds
+
+
 # Skew applied to the cached OAuth token: refresh proactively when we're
 # within this many seconds of expiry so a long-running signing call
 # doesn't race the 401.
@@ -107,29 +150,120 @@ class CSCClient:
         # (token, expiry_epoch). Empty token = unauthenticated.
         self._access_token: str = ""
         self._token_expiry: float = 0.0
+        # Persisted refresh token (provided by the caller via
+        # :meth:`set_refresh_token`) — used to mint new access tokens
+        # without re-prompting the user once the authorization-code
+        # flow has been completed at least once.
+        self._refresh_token: str = ""
 
-    # ----- OAuth 2.0 -----
-
-    def authenticate(self, scope: str = "service") -> str:
-        """Obtain an OAuth 2.0 access token via the *client_credentials*
-        grant — CSC v2 §8.4. The token is cached in memory; subsequent
-        calls within its lifetime return the cached one.
-
-        Returns the bearer token. The caller does not normally need to
-        invoke this directly: every signing endpoint calls
-        :meth:`_authorized_request` which authenticates on demand.
+    def set_refresh_token(self, refresh_token: str) -> None:
+        """Inject a refresh token previously obtained from
+        :meth:`exchange_code` (typically restored from disk on next run).
+        Subsequent calls to :meth:`authenticate` will use it instead of
+        falling back to client_credentials.
         """
-        if self._access_token and time.monotonic() < self._token_expiry:
-            return self._access_token
+        self._refresh_token = refresh_token
 
-        data = {
-            "grant_type": "client_credentials",
+    @property
+    def refresh_token(self) -> str:
+        """The current refresh token, if any (updated after each refresh)."""
+        return self._refresh_token
+
+    # ----- OAuth 2.0: authorization-code flow (RFC 6749 §4.1 + PKCE) -----
+
+    def build_authorize_url(
+        self,
+        redirect_uri: str,
+        scope: str = "service",
+        state: str = "",
+        code_challenge: str = "",
+    ) -> str:
+        """URL the user should open in a browser to authorise this client.
+
+        Most Italian QTSPs (Aruba, InfoCert, Namirial) require the
+        authorization-code flow with PKCS#11 *and* PKCE: pass a freshly
+        generated ``code_challenge`` (see :func:`generate_pkce`) and
+        keep the matching verifier around for :meth:`exchange_code`.
+        """
+        params = {
+            "response_type": "code",
             "client_id": self.config.client_id,
+            "redirect_uri": redirect_uri,
             "scope": scope,
+        }
+        if state:
+            params["state"] = state
+        if code_challenge:
+            params["code_challenge"] = code_challenge
+            params["code_challenge_method"] = "S256"
+        return f"{self.config.base_url}/oauth2/authorize?{urlencode(params)}"
+
+    def exchange_code(
+        self,
+        code: str,
+        redirect_uri: str,
+        code_verifier: str = "",
+    ) -> OAuthTokens:
+        """Exchange an authorization code for access + refresh tokens.
+
+        Called by the local HTTP listener after the user's browser
+        redirects back with `?code=...`. ``code_verifier`` is the
+        same one used to derive the challenge in
+        :meth:`build_authorize_url` (RFC 7636).
+        """
+        data: dict[str, str] = {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+            "client_id": self.config.client_id,
         }
         if self.config.client_secret:
             data["client_secret"] = self.config.client_secret
+        if code_verifier:
+            data["code_verifier"] = code_verifier
+        tokens = self._post_token(data, _("code exchange"))
+        # Adopt the freshly minted tokens as our state so the caller
+        # can immediately use the client without an extra set_* dance.
+        self._access_token = tokens.access_token
+        self._token_expiry = time.monotonic() + max(
+            0.0, tokens.expires_in - _TOKEN_REFRESH_SKEW,
+        )
+        self._refresh_token = tokens.refresh_token or self._refresh_token
+        return tokens
 
+    def _refresh_access_token(self) -> bool:
+        """Mint a new access token from the stored refresh token.
+
+        Returns True on success, False if no refresh token is available
+        or the QTSP refused it (caller should fall back to a fresh
+        authorization-code flow).
+        """
+        if not self._refresh_token:
+            return False
+        data = {
+            "grant_type": "refresh_token",
+            "refresh_token": self._refresh_token,
+            "client_id": self.config.client_id,
+        }
+        if self.config.client_secret:
+            data["client_secret"] = self.config.client_secret
+        try:
+            tokens = self._post_token(data, _("refresh"))
+        except CSCError:
+            # Refresh token rejected — wipe it so we don't try again,
+            # then signal the caller to re-authenticate from scratch.
+            self._refresh_token = ""
+            return False
+        self._access_token = tokens.access_token
+        self._token_expiry = time.monotonic() + max(
+            0.0, tokens.expires_in - _TOKEN_REFRESH_SKEW,
+        )
+        if tokens.refresh_token:
+            self._refresh_token = tokens.refresh_token
+        return True
+
+    def _post_token(self, data: dict[str, str], context: str) -> OAuthTokens:
+        """Shared transport for `/oauth2/token` (authcode + refresh + cc)."""
         try:
             r = requests.post(
                 f"{self.config.base_url}/oauth2/token",
@@ -138,23 +272,64 @@ class CSCClient:
                 timeout=self.config.timeout,
             )
         except requests.RequestException as ex:
-            raise CSCError(_("OAuth transport error: {ex}").format(ex=ex)) from ex
+            raise CSCError(_("{ctx} transport error: {ex}").format(
+                ctx=context, ex=ex)) from ex
         if not r.ok:
-            raise CSCError(self._format_http_error(r, _("OAuth")))
+            raise CSCError(self._format_http_error(r, context))
         try:
             payload = r.json()
         except ValueError as ex:
-            raise CSCError(_("malformed OAuth response (not JSON)")) from ex
+            raise CSCError(_("malformed {ctx} response (not JSON)").format(
+                ctx=context)) from ex
+        access = payload.get("access_token")
+        if not isinstance(access, str) or not access:
+            raise CSCError(_("{ctx} response missing access_token").format(ctx=context))
+        return OAuthTokens(
+            access_token=access,
+            refresh_token=str(payload.get("refresh_token", "")),
+            expires_in=int(payload.get("expires_in", 300)),
+        )
 
-        token = payload.get("access_token")
-        if not isinstance(token, str) or not token:
-            raise CSCError(_("OAuth response missing access_token"))
-        # `expires_in` is optional in the spec; default to 5 minutes when
-        # the QTSP omits it so we don't end up caching forever.
-        expires_in = float(payload.get("expires_in", 300))
-        self._access_token = token
-        self._token_expiry = time.monotonic() + max(0.0, expires_in - _TOKEN_REFRESH_SKEW)
-        return token
+    # ----- OAuth 2.0 -----
+
+    def authenticate(self, scope: str = "service") -> str:
+        """Obtain an OAuth 2.0 access token, in this order of preference:
+
+          1. cached access token, if not yet within the refresh skew;
+          2. `refresh_token` grant — if a refresh token is set (most
+             common path during a normal session, since
+             :meth:`exchange_code` populates one);
+          3. `client_credentials` grant — fallback for clients that
+             aren't tied to a specific end user (server-to-server
+             integrations).
+
+        Returns the bearer token. The signing endpoints call this
+        implicitly via :meth:`_authorized_request` so manual use is
+        rarely needed.
+        """
+        if self._access_token and time.monotonic() < self._token_expiry:
+            return self._access_token
+
+        # Try the refresh path first: cheaper, no re-auth from the
+        # user, and the only path that works for QTSPs which don't
+        # support client_credentials at all.
+        if self._refresh_token and self._refresh_access_token():
+            return self._access_token
+
+        # Fall back to client_credentials.
+        data: dict[str, str] = {
+            "grant_type": "client_credentials",
+            "client_id": self.config.client_id,
+            "scope": scope,
+        }
+        if self.config.client_secret:
+            data["client_secret"] = self.config.client_secret
+        tokens = self._post_token(data, _("client_credentials"))
+        self._access_token = tokens.access_token
+        self._token_expiry = time.monotonic() + max(
+            0.0, tokens.expires_in - _TOKEN_REFRESH_SKEW,
+        )
+        return tokens.access_token
 
     # ----- credentials -----
 

@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from sigillum.core.csc import CSCClient, CSCConfig, CSCError, SAD
+from sigillum.core.csc import CSCClient, CSCConfig, CSCError, SAD, generate_pkce
 
 
 # -----------------------------------------------------------------------
@@ -268,6 +268,102 @@ def test_401_triggers_one_reauth(mock_post):
     ]
     assert _client().list_credentials() == ["c"]
     assert mock_post.call_count == 4
+
+
+# -----------------------------------------------------------------------
+# authorization-code flow (PKCE)
+# -----------------------------------------------------------------------
+
+def test_generate_pkce_pair_is_valid():
+    """RFC 7636 §4: challenge = base64url(sha256(verifier)), 43+ chars
+    of url-safe alphabet for both."""
+    import base64
+    import hashlib
+    import re
+
+    pkce = generate_pkce()
+    assert pkce.method == "S256"
+    assert re.fullmatch(r"[A-Za-z0-9_\-]{43,128}", pkce.verifier)
+    assert re.fullmatch(r"[A-Za-z0-9_\-]{43}", pkce.challenge)
+    expected = base64.urlsafe_b64encode(
+        hashlib.sha256(pkce.verifier.encode("ascii")).digest()
+    ).rstrip(b"=").decode("ascii")
+    assert pkce.challenge == expected
+
+
+def test_build_authorize_url_includes_pkce_and_state():
+    cli = _client()
+    pkce = generate_pkce()
+    url = cli.build_authorize_url(
+        redirect_uri="http://127.0.0.1:9999/cb",
+        scope="service",
+        state="st-xyz",
+        code_challenge=pkce.challenge,
+    )
+    assert url.startswith("https://qtsp.test/csc/v2/oauth2/authorize?")
+    assert "response_type=code" in url
+    assert "client_id=cid" in url
+    assert "code_challenge_method=S256" in url
+    assert "state=st-xyz" in url
+    assert f"code_challenge={pkce.challenge}" in url
+
+
+@patch("sigillum.core.csc.client.requests.post")
+def test_exchange_code_populates_tokens(mock_post):
+    mock_post.return_value = _resp(200, {
+        "access_token": "tok-acc",
+        "refresh_token": "tok-ref",
+        "expires_in": 3600,
+    })
+    cli = _client()
+    tokens = cli.exchange_code(
+        "auth-code", "http://127.0.0.1:9999/cb", code_verifier="ver",
+    )
+    assert tokens.access_token == "tok-acc"
+    assert tokens.refresh_token == "tok-ref"
+    # The client adopted them — a follow-up authenticate() returns the
+    # cached access token without making a second request.
+    assert cli.authenticate() == "tok-acc"
+    assert cli.refresh_token == "tok-ref"
+    # POST body sanity-check
+    args, kwargs = mock_post.call_args
+    assert kwargs["data"]["grant_type"] == "authorization_code"
+    assert kwargs["data"]["code"] == "auth-code"
+    assert kwargs["data"]["code_verifier"] == "ver"
+
+
+@patch("sigillum.core.csc.client.requests.post")
+def test_authenticate_uses_refresh_token_when_available(mock_post):
+    """When a refresh token is set, authenticate() must use the
+    refresh_token grant before falling back to client_credentials."""
+    mock_post.return_value = _resp(200, {
+        "access_token": "tok-refreshed",
+        "refresh_token": "tok-ref-2",
+        "expires_in": 3600,
+    })
+    cli = _client()
+    cli.set_refresh_token("tok-ref-original")
+    assert cli.authenticate() == "tok-refreshed"
+    assert mock_post.call_count == 1
+    assert mock_post.call_args.kwargs["data"]["grant_type"] == "refresh_token"
+    # The new refresh token returned by the QTSP replaces the old one
+    # (RFC 6749 §6 allows rotation).
+    assert cli.refresh_token == "tok-ref-2"
+
+
+@patch("sigillum.core.csc.client.requests.post")
+def test_authenticate_falls_back_when_refresh_rejected(mock_post):
+    """If the saved refresh token is dead, the client discards it and
+    falls back to client_credentials transparently."""
+    mock_post.side_effect = [
+        _resp(400, {"error": "invalid_grant"}),
+        _resp(200, {"access_token": "tok-cc", "expires_in": 3600}),
+    ]
+    cli = _client()
+    cli.set_refresh_token("dead-token")
+    assert cli.authenticate() == "tok-cc"
+    assert mock_post.call_count == 2
+    assert cli.refresh_token == ""  # wiped after the rejection
 
 
 @patch("sigillum.core.csc.client.requests.post")
