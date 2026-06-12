@@ -20,7 +20,7 @@ from typing import Literal
 from ..i18n import _
 
 
-SourceKind = Literal["file", "pkcs11"]
+SourceKind = Literal["file", "pkcs11", "csc"]
 
 
 # Mapping for the two cases where the locale ISO-3166 code differs from the
@@ -92,12 +92,29 @@ class Settings:
     # may be a directory (scanned recursively for `*.so*`), a glob, or an
     # exact file path. `~` and `*` are expanded.
     extra_pkcs11_search_paths: list[str] = field(default_factory=list)
+    # Remote signing via Cloud Signature Consortium (CSC v2 / ETSI TS 119 432).
+    # `csc_url` is the base URL of the QTSP service, *without* trailing slash
+    # (e.g. https://api.qtsp.example/csc/v2). `csc_client_id` /
+    # `csc_client_secret` come from a one-off Sigillum registration on the
+    # QTSP portal. `csc_credential_id` is the user's signing credential at
+    # the QTSP, enumerable via `sigillum csc-list`. `csc_pin` is the static
+    # long-term PIN if the QTSP requires it alongside the per-signature OTP
+    # (most don't).
+    csc_url: str = ""
+    csc_client_id: str = ""
+    csc_client_secret: str = ""
+    csc_credential_id: str = ""
+    csc_pin: str = ""
+    csc_cert_subject: str = ""  # cached for UI display; not authoritative
 
     def is_configured(self) -> bool:
         if self.source == "file":
             return bool(self.file_path)
         if self.source == "pkcs11":
             return bool(self.pkcs11_library and self.pkcs11_cert_id)
+        if self.source == "csc":
+            return bool(self.csc_url and self.csc_client_id
+                        and self.csc_credential_id)
         return False
 
     def describe(self) -> str:
@@ -109,6 +126,10 @@ class Settings:
         if self.source == "pkcs11":
             label = self.pkcs11_cert_subject or self.pkcs11_cert_id or _("(no cert chosen)")
             return _("PKCS#11 token: {label}").format(label=label)
+        if self.source == "csc":
+            label = (self.csc_cert_subject or self.csc_credential_id
+                     or _("(no credential chosen)"))
+            return _("CSC remote: {label}").format(label=label)
         return _("No device configured")
 
     def effective_country(self) -> str:
@@ -220,7 +241,7 @@ def load_settings(path: Path | None = None) -> Settings:
             tsl_active = [primary]
 
     return Settings(
-        source=data.get("source") if data.get("source") in ("file", "pkcs11") else None,
+        source=data.get("source") if data.get("source") in ("file", "pkcs11", "csc") else None,
         file_path=str(data.get("file_path", "")),
         pkcs11_library=str(data.get("pkcs11_library", "")),
         pkcs11_cert_id=str(data.get("pkcs11_cert_id", "")),
@@ -237,6 +258,12 @@ def load_settings(path: Path | None = None) -> Settings:
         extra_pkcs11_search_paths=_parse_search_paths(
             data.get("extra_pkcs11_search_paths") or data.get("extra_pkcs11_drivers")
         ),
+        csc_url=str(data.get("csc_url", "")),
+        csc_client_id=str(data.get("csc_client_id", "")),
+        csc_client_secret=str(data.get("csc_client_secret", "")),
+        csc_credential_id=str(data.get("csc_credential_id", "")),
+        csc_pin=str(data.get("csc_pin", "")),
+        csc_cert_subject=str(data.get("csc_cert_subject", "")),
     )
 
 
