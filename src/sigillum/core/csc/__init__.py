@@ -24,7 +24,10 @@ from .client import (
     CSCConfig,
     CSCCredentialInfo,
     CSCError,
+    OAuthTokens,
+    PKCEPair,
     SAD,
+    generate_pkce,
 )
 
 __all__ = [
@@ -32,5 +35,8 @@ __all__ = [
     "CSCConfig",
     "CSCCredentialInfo",
     "CSCError",
+    "OAuthTokens",
+    "PKCEPair",
     "SAD",
+    "generate_pkce",
 ]

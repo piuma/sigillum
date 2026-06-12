@@ -24,6 +24,7 @@ import getpass
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Sequence
 
@@ -150,6 +151,12 @@ def _resolve_credential_from_args(args, settings):
             client_id=settings.csc_client_id,
             client_secret=settings.csc_client_secret,
         )
+        client = CSCClient(cfg)
+        # Inject the saved refresh token (from a previous `sigillum
+        # csc-login`) so signing doesn't trigger a fresh browser dance
+        # if the QTSP requires authorization_code.
+        if settings.csc_refresh_token:
+            client.set_refresh_token(settings.csc_refresh_token)
         # OTP is fetched from $SIGILLUM_OTP or prompted at sign time —
         # the lambda defers the lookup until endesive actually calls
         # `hsm.sign()`, which is when the SMS / push has just landed.
@@ -157,7 +164,7 @@ def _resolve_credential_from_args(args, settings):
             "SIGILLUM_OTP", _("OTP (signature activation): "),
         )
         provider = RemoteCSCProvider(
-            CSCClient(cfg), otp_provider=otp_provider, pin=settings.csc_pin,
+            client, otp_provider=otp_provider, pin=settings.csc_pin,
         )
         cred = provider.unlock(settings.csc_credential_id, "")
         return cred, provider
@@ -758,6 +765,117 @@ def _cmd_detect(args) -> int:
 
 
 # ---------------------------------------------------------------------------
+# `csc-login` subcommand
+# ---------------------------------------------------------------------------
+
+def _cmd_csc_login(args) -> int:
+    """Run an OAuth 2.0 authorization-code flow against the configured QTSP.
+
+    Opens the system browser at the QTSP's authorize endpoint, spawns a
+    one-shot HTTP listener on `127.0.0.1:<port>` to receive the redirect,
+    exchanges the resulting `code` for tokens (PKCE) and saves the
+    refresh token into settings. Subsequent `sigillum sign` runs use it
+    transparently — no further interactive logins until the QTSP
+    revokes the grant.
+    """
+    import http.server
+    import socket
+    import threading
+    import urllib.parse
+    import webbrowser
+
+    from .core.csc import CSCClient, CSCConfig, CSCError, generate_pkce
+    from .core.settings import load_settings, save_settings
+
+    s = load_settings()
+    if not (s.csc_url and s.csc_client_id):
+        return _err(_(
+            "CSC service not configured. Run `sigillum config set "
+            "--csc-url URL --csc-client-id ID [--csc-client-secret SECRET]` "
+            "first."
+        ))
+
+    # Bind on an ephemeral local port and build the redirect URI from it.
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", args.port or 0))
+        port = probe.getsockname()[1]
+    redirect_uri = f"http://127.0.0.1:{port}/callback"
+
+    pkce = generate_pkce()
+    state = generate_pkce().challenge  # reuse helper for CSPRNG state value
+    cfg = CSCConfig(
+        base_url=s.csc_url,
+        client_id=s.csc_client_id,
+        client_secret=s.csc_client_secret,
+    )
+    client = CSCClient(cfg)
+    auth_url = client.build_authorize_url(
+        redirect_uri=redirect_uri,
+        scope=args.scope,
+        state=state,
+        code_challenge=pkce.challenge,
+    )
+
+    received: dict[str, str] = {}
+
+    class _Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802
+            parsed = urllib.parse.urlparse(self.path)
+            params = dict(urllib.parse.parse_qsl(parsed.query))
+            received.update(params)
+            body = _(
+                "Sigillum: authorization received. You can close this tab."
+            ).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_):  # silence stderr access log
+            return
+
+    server = http.server.HTTPServer(("127.0.0.1", port), _Handler)
+    server.timeout = args.timeout
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    try:
+        print(_("Opening browser to: {url}").format(url=auth_url))
+        if not webbrowser.open(auth_url):
+            print(_("(Couldn't auto-open; copy/paste the URL into a browser.)"))
+        # Wait for the redirect or for the user to give up.
+        deadline = time.monotonic() + args.timeout
+        while "code" not in received and "error" not in received:
+            if time.monotonic() >= deadline:
+                return _err(_("timed out waiting for the OAuth redirect"))
+            time.sleep(0.5)
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    if "error" in received:
+        return _err(_("QTSP returned an error: {err}").format(err=received["error"]))
+    if received.get("state") != state:
+        return _err(_("OAuth state mismatch — aborting"))
+
+    try:
+        tokens = client.exchange_code(
+            received["code"], redirect_uri, code_verifier=pkce.verifier,
+        )
+    except CSCError as ex:
+        return _err(_("code exchange failed: {ex}").format(ex=ex), code=2)
+
+    if not tokens.refresh_token:
+        print(_("Warning: QTSP issued no refresh_token — you will need to "
+                "re-login when the access token expires."), file=sys.stderr)
+    s.csc_refresh_token = tokens.refresh_token
+    save_settings(s)
+    print(_("Login OK. Access token expires in {n}s; "
+            "refresh token saved to settings.").format(n=tokens.expires_in))
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # `csc-list` subcommand
 # ---------------------------------------------------------------------------
 
@@ -1162,6 +1280,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_det.add_argument("--json", action="store_true", help=_("JSON output"))
     p_det.set_defaults(func=_cmd_detect)
+
+    # csc-login
+    p_login = sub.add_parser(
+        "csc-login",
+        help=_("OAuth 2.0 authorization-code login against the configured QTSP"),
+        description=_(
+            "Open the QTSP authorize URL in your browser, capture the "
+            "redirect on a local port, exchange the code for tokens "
+            "(PKCE) and persist the refresh token so subsequent "
+            "`sigillum sign` runs don't prompt you again."
+        ),
+    )
+    p_login.add_argument("--port", type=int, default=0,
+                         help=_("local port for the OAuth redirect "
+                                "listener (0 = pick a free one)"))
+    p_login.add_argument("--scope", default="service",
+                         help=_("OAuth scope (default: service)"))
+    p_login.add_argument("--timeout", type=int, default=300,
+                         help=_("seconds to wait for the browser "
+                                "redirect before giving up"))
+    p_login.set_defaults(func=_cmd_csc_login)
 
     # csc-list
     p_csc = sub.add_parser(

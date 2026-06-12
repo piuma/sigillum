@@ -106,6 +106,11 @@ class Settings:
     csc_credential_id: str = ""
     csc_pin: str = ""
     csc_cert_subject: str = ""  # cached for UI display; not authoritative
+    # OAuth 2.0 refresh token obtained via `sigillum csc-login`. Lets
+    # `sigillum sign` mint fresh access tokens without re-prompting the
+    # user every time the access token expires (typically 1h). Lost on
+    # purpose when --csc-client-id/--csc-url change.
+    csc_refresh_token: str = ""
 
     def is_configured(self) -> bool:
         if self.source == "file":
@@ -264,6 +269,7 @@ def load_settings(path: Path | None = None) -> Settings:
         csc_credential_id=str(data.get("csc_credential_id", "")),
         csc_pin=str(data.get("csc_pin", "")),
         csc_cert_subject=str(data.get("csc_cert_subject", "")),
+        csc_refresh_token=str(data.get("csc_refresh_token", "")),
     )
 
 

@@ -7,6 +7,7 @@ _shtab_sigillum_commands() {
   local _commands=(
     "config:"
     "csc-list:Enumerate remote credentials at the QTSP set via \`sigillum config set --csc-url \… --csc-client-id \…\`. Use the resulting credential ID with \`sigillum config set --csc-credential-id ID\` to make Sigillum sign through it."
+    "csc-login:Open the QTSP authorize URL in your browser, capture the redirect on a local port, exchange the code for tokens (PKCE) and persist the refresh token so subsequent \`sigillum sign\` runs don\'t prompt you again."
     "decrypt:Decrypt a .enc (symmetric) or .p7e (CMS EnvelopedData) file."
     "detect:"
     "encrypt:Encrypt the input file. Default\: symmetric AES-256 with password."
@@ -67,6 +68,13 @@ _shtab_sigillum_config_show_options=(
 _shtab_sigillum_csc_list_options=(
   "(- : *)"{-h,--help}"[show this help message and exit]"
   "--json[JSON output]"
+)
+
+_shtab_sigillum_csc_login_options=(
+  "(- : *)"{-h,--help}"[show this help message and exit]"
+  "--port[local port for the OAuth redirect listener (0 \= pick a free one)]:port:"
+  "--scope[OAuth scope (default\: service)]:scope:"
+  "--timeout[seconds to wait for the browser redirect before giving up]:timeout:"
 )
 
 _shtab_sigillum_decrypt_options=(
@@ -173,6 +181,7 @@ _shtab_sigillum() {
       case $line[1] in
         config) _shtab_sigillum_config ;;
         csc-list) _arguments -C -s $_shtab_sigillum_csc_list_options ;;
+        csc-login) _arguments -C -s $_shtab_sigillum_csc_login_options ;;
         decrypt) _arguments -C -s $_shtab_sigillum_decrypt_options ;;
         detect) _arguments -C -s $_shtab_sigillum_detect_options ;;
         encrypt) _arguments -C -s $_shtab_sigillum_encrypt_options ;;
