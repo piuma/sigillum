@@ -21,6 +21,7 @@ It supports credentials from files (PKCS#12) and hardware tokens via PKCS#11 (Yu
 - Encryption of file in four ways: symmetric with password (AES-256/AES-128/3DES/Blowfish in CBC + PKCS#7 + PBKDF2-SHA256), asymmetric against the configured certificate (token or file), asymmetric against a certificate from a PKCS#12 file
 - Verification of PAdES/CAdES/XAdES signatures and timestamps `.tsr` / `.tsd` with separate checks for hash, signature, signer chain, timestamp, TSA chain
 - **Visible signature** on PDF: preset angle, page, optional logo, and graphical selection of the frame with the mouse on the PDF preview
+- **Remote signing** via Cloud Signature Consortium (CSC v2 / ETSI TS 119 432) against any compliant QTSP — Italian QSeal / QSignature in cloud included
 - **Auto-detection** of the PKCS#11 token + compatible driver
 - **Preview of the signature frame** in the settings
 - Device configuration, TSA (URL + optional Basic Auth) and logo persisted in `~/.config/sigillum/settings.json` (0600 because it may contain TSA passwords)
@@ -36,23 +37,6 @@ Current limitations:
 - The `sigillum.core.tsa` module is a stub: signature timestamping is passed through `endesive`; The standalone timestamp (`.tsr` / `.tsd`) is in `sigillum.core.timestamp`
 
 [Contributing Guide](contributing.md)
-
-## Requirements
-
-- Linux
-- Python ≥ 3.11
-- GTK 3 + GObject introspection (`PyGObject`)
-- Poppler with GI bindings (for PDF preview in the visible signature picker)
-
-Python dependencies (defined in `pyproject.toml`):
-
-- `endesive` — PAdES/CAdES signing/verification
-- `PyKCS11` — token access via PKCS#11
-- `cryptography` — cryptographic primitives and X.509 parsing
-- `asn1crypto` — low-level CMS/X.509 manipulation
-- `PyGObject` — GTK / GLib / Cairo / Poppler binding
-- `requests` — HTTP calls (TSL AgID, FreeTSA CA)
-- `lxml` — XAdES (XML signing)
 
 ## Installation
 
@@ -195,6 +179,8 @@ sigillum encrypt <file> [-o OUT] [--mode sym|asym] [--algo AES-256|AES-128|3DES|
 sigillum decrypt <file> [-o OUT] [--cert P12 | --lib LIB --cert-id ID]
 sigillum tsl-import
 sigillum detect [--json]
+sigillum csc-list [--json]
+sigillum csc-login [--port PORT] [--scope SCOPE] [--timeout SECS]
 sigillum config show [--json]
 sigillum config set [--cert P12 | --lib LIB --cert-id ID]
 [--tsa URL --tsa-user U --tsa-password P]
@@ -298,6 +284,72 @@ OpenSC cannot read the *qualified signing certificate* (DS) on most Italian CNS 
 Practical consequence: to sign with an Italian CNS / firma qualificata you must install the **proprietary middleware** shipped with Aruba Sign / InfoCamere Sign Desktop / Dike (`libbit4xpki.so` and friends). Sigillum's auto detect token function already prefers the proprietary driver over OpenSC when both are present.
 
 We sincerely hope that the SM key can be extracted to allow OpenSC to work with Italian CNS and to prefer OpenSC to proprietary drivers.
+
+## Remote signing (CSC v2 / ETSI TS 119 432)
+
+Sigillum can sign documents against any **Cloud Signature Consortium v2** service (the protocol mandated by AgID for *firma qualificata remota* and used by every major Italian QTSP). The private key never leaves the QTSP's HSM: Sigillum sends a hash, the QTSP authorises the operation against an OTP and returns the signature.
+
+### What you need from the QTSP
+
+A one-off registration on the QTSP's developer portal gets you **two strings**:
+
+- **`client_id`** — identifies *Sigillum as a registered application* against the QTSP. Has nothing to do with your end-user account or with your signing certificate.
+- **`client_secret`** *(optional)* — sometimes called *app secret*. Public clients with PKCE can leave it empty.
+
+When registering the application, set the **redirect URI** to `http://127.0.0.1` (Sigillum opens an ephemeral local port at login time; vendors that require an exact port accept `http://127.0.0.1:38000/callback` as a stable choice). Request the OAuth scopes `service` and (if listed) `credential`.
+
+The user-side OTP — the one Sigillum will ask you for at every signature — is the same SMS / push notification you already use on the QTSP's web portal or app. **No new OTP channel to configure.**
+
+### Quick start — CLI
+
+```bash
+# 1) Save the QTSP coordinates once.
+sigillum config set \
+    --csc-url https://api.qtsp.example/csc/v2 \
+    --csc-client-id <CLIENT_ID> \
+    --csc-client-secret <CLIENT_SECRET>
+
+# 2) Browser-based authorization-code login (PKCE). Stores a refresh
+#    token so you won't have to re-login until the QTSP revokes the grant.
+sigillum csc-login
+
+# 3) See which signing credentials are visible to your account, then pin one.
+sigillum csc-list
+sigillum config set --csc-credential-id <CREDENTIAL_ID>
+
+# 4) Sign. The QTSP sends an OTP, Sigillum prompts for it (or reads
+#    $SIGILLUM_OTP for scripted usage).
+sigillum sign documento.pdf -o documento-signed.pdf
+```
+
+### Quick start — GUI
+
+1. **Settings → Signing device → "Remote service (CSC)"**.
+2. Fill in service URL, client_id, client_secret, optional long-term PIN.
+3. *(Authorization-code QTSPs)* run `sigillum csc-login` from a terminal once — the GUI doesn't host the browser dance yet, but a CLI login persists the refresh token Sigillum's GUI signer will pick up automatically.
+4. Click **🔍 Discover credentials**, pick yours, **Save**.
+5. **Sign** tab: pick a document and click Sign. A dialog asks for the OTP that the QTSP has just sent you.
+
+### Italian QTSPs known to expose CSC v2
+
+| QTSP | Service entry point | Developer portal |
+|---|---|---|
+| Aruba Remote Sign | `https://csc.aruba.it/csc/v2`¹ | <https://www.pec.it/firma-remota.aspx> |
+| InfoCert IRIS | `https://iris.infocert.digital/csc/v2`¹ | <https://help.infocert.it/business/IRIS> |
+| Namirial FirmaCerta Remote | `https://csc.namirial.com/v2`¹ | <https://www.firmacerta.it/sviluppatori.php> |
+| Cyberneid (Actalis) | provided per contract | <https://www.cyberneid.com> |
+| GoSign / InfoCamere | `https://api.gosign.it/csc/v2`¹ | <https://www.firma.infocamere.it> |
+
+¹ exact URLs are confirmed by the QTSP when you receive your client credentials — treat the table as a starting point. None of these QTSPs publicly self-serves `client_id`/`client_secret`: you have to file a B2B request or contract for cloud signature integrations.
+
+If you only have an end-user contract (e.g. a personal Aruba Remote Sign subscription) you typically cannot request a `client_id` for third-party applications — the QTSP expects you to use their own tool. Sigillum can integrate the moment you can obtain those two strings; ask their support whether a "developer credential" tier is available.
+
+### Caveats and behaviour
+
+- **One OTP per signature** — the CSC v2 spec demands a fresh SAD per `signHash` call. Sigillum gives you one prompt per signature; flows that need more than one (e.g. PAdES-LTA, retry after a stale SAD) number the prompt as `OTP #2`, `OTP #3`, … so you know the request is legitimate.
+- **Refresh token cached in `~/.config/sigillum/settings.json`** (file mode `0600`). Lost if you change `csc_client_id` / `csc_url`. Re-run `sigillum csc-login` to mint a fresh one.
+- **Algorithm support**: RSA-PKCS1v15, RSA-PSS (id-RSASSA-PSS), and ECDSA — `Sigillum picks the right signAlgo` OID from `credentials/info.key.algo`. Use the `prefer_pss` flag on `RemoteCSCProvider` (or set up the credential with `key_algo=id-RSASSA-PSS`) for PAdES B-LTA 2023 profiles that require PSS.
+- **No remote decryption yet** — the Encrypt/Decrypt tabs still need a local credential (PKCS#11 or PKCS#12). Most QTSPs don't expose decryption over CSC anyway.
 
 ## Standalone Timestamp (TSR / TSD)
 
