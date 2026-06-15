@@ -133,6 +133,30 @@ class OAuthTokens:
     expires_in: int     # access token TTL in seconds
 
 
+@dataclass(frozen=True)
+class OTPRequest:
+    """Context passed to the user-supplied OTP provider on each signing
+    round-trip.
+
+    Sigillum's HSM adapter calls the provider every time the underlying
+    signer invokes ``hsm.sign()`` — typically once per document, but
+    occasionally more (PAdES-LTA archive timestamps, signer-retry after
+    a stale SAD, future batch workflows). ``sequence`` lets the UI tell
+    the user "this is OTP #2 of the same document" instead of looking
+    like it's stuck in a loop.
+
+    Fields:
+      sequence:           1-based index of this OTP within the current
+                          signing session (resets per provider instance).
+      credential_subject: human-friendly description of the remote
+                          credential being activated, copied from
+                          ``CSCCredentialInfo.description`` so the OTP
+                          dialog can show *which* signer is being used.
+    """
+    sequence: int = 1
+    credential_subject: str = ""
+
+
 # Skew applied to the cached OAuth token: refresh proactively when we're
 # within this many seconds of expiry so a long-running signing call
 # doesn't race the 401.
