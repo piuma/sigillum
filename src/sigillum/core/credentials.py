@@ -409,7 +409,7 @@ class _RemoteCSCHSM:
         credential_id: str,
         info,                      # CSCCredentialInfo
         cert_der: bytes,
-        otp_provider: Callable[[], str],
+        otp_provider: Callable,    # (OTPRequest) -> str
         pin: str = "",
         prefer_pss: bool = False,
     ) -> None:
@@ -423,6 +423,11 @@ class _RemoteCSCHSM:
         # the caller forces it via *prefer_pss* we ask the QTSP for PSS
         # even on credentials advertised as plain RSA.
         self._prefer_pss = prefer_pss
+        # Incremented every time `sign()` is invoked, so the OTP dialog
+        # can show "OTP #N" when a single signing flow requires more
+        # than one SAD (PAdES-LTA archive timestamps, recovery after a
+        # stale SAD, batch workflows).
+        self._otp_sequence = 0
 
     # ----- BaseHSM contract -----
 
@@ -439,7 +444,8 @@ class _RemoteCSCHSM:
         sign_oid = self._sign_algo_oid(hashalgo.lower())
 
         digest = _digest(data, hashalgo)
-        otp = self._otp_provider()
+        self._otp_sequence += 1
+        otp = self._call_otp_provider()
         sad = self._client.authorize(
             self._cred_id, [digest], otp=otp, pin=self._pin,
         )
@@ -447,6 +453,22 @@ class _RemoteCSCHSM:
             self._cred_id, sad, [digest], h_oid, sign_oid,
         )
         return sigs[0]
+
+    def _call_otp_provider(self) -> str:
+        """Invoke the user-supplied OTP provider with an :class:`OTPRequest`
+        when its signature accepts one, falling back to the historic
+        no-arg form for back-compat with simple lambdas used in tests
+        or by external callers."""
+        from .csc import OTPRequest
+        request = OTPRequest(
+            sequence=self._otp_sequence,
+            credential_subject=self._info.description,
+        )
+        try:
+            return self._otp_provider(request)
+        except TypeError:
+            # provider doesn't accept the argument — call no-arg
+            return self._otp_provider()
 
     def _sign_algo_oid(self, hashalgo: str) -> str:
         """Pick the QTSP-side signAlgo OID matching this credential's

@@ -157,12 +157,18 @@ def _resolve_credential_from_args(args, settings):
         # if the QTSP requires authorization_code.
         if settings.csc_refresh_token:
             client.set_refresh_token(settings.csc_refresh_token)
-        # OTP is fetched from $SIGILLUM_OTP or prompted at sign time —
-        # the lambda defers the lookup until endesive actually calls
-        # `hsm.sign()`, which is when the SMS / push has just landed.
-        otp_provider = lambda: _read_secret(  # noqa: E731
-            "SIGILLUM_OTP", _("OTP (signature activation): "),
-        )
+
+        # OTP is fetched from $SIGILLUM_OTP or prompted at sign time.
+        # The prompt is rebuilt per request so the user can see when
+        # more than one OTP is needed for the same document (rare but
+        # possible: PAdES-LTA archive timestamps, retry after stale
+        # SAD, batch workflows).
+        def otp_provider(req):
+            label = _("OTP #{n} for {subj}: ").format(
+                n=req.sequence, subj=req.credential_subject or _("signing"),
+            ) if req.sequence > 1 else _("OTP (signature activation): ")
+            return _read_secret("SIGILLUM_OTP", label)
+
         provider = RemoteCSCProvider(
             client, otp_provider=otp_provider, pin=settings.csc_pin,
         )

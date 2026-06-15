@@ -18,7 +18,7 @@ from sigillum.core.credentials import (
     RemoteCSCProvider,
     SigningCredential,
 )
-from sigillum.core.csc import CSCCredentialInfo, SAD
+from sigillum.core.csc import CSCCredentialInfo, OTPRequest, SAD
 
 
 # -----------------------------------------------------------------------
@@ -246,6 +246,58 @@ def test_hsm_sign_rejects_unsupported_key_algo(cert_material):
     cred = RemoteCSCProvider(client, otp_provider=lambda: "0").unlock("cred-1", "")
     with pytest.raises(NotImplementedError, match="key algorithm"):
         cred.hsm.sign(b"", b"data", "sha256")
+
+
+def test_hsm_passes_sequence_and_subject_to_otp_provider(cert_material):
+    """Each `hsm.sign()` call must increment the OTP sequence number
+    and pass the credential subject — the GUI/CLI use these to label
+    the OTP dialog so users notice when more than one OTP is needed
+    for a single document (PAdES-LTA, SAD-stale recovery, batch)."""
+    cert_pem, _ = cert_material
+    info = CSCCredentialInfo(
+        credential_id="cred-1",
+        cert_chain_pem=[cert_pem],
+        key_algo="1.2.840.113549.1.1.1",
+        key_length=2048,
+        hash_algos=["2.16.840.1.101.3.4.2.1"],
+        description="CN=Test Signer,O=Test,C=IT",
+    )
+    client = MagicMock()
+    client.credential_info.return_value = info
+    client.authorize.return_value = SAD(value="sad", expires_in=300)
+    client.sign_hash.return_value = [b"sig"]
+
+    seen: list[OTPRequest] = []
+    def otp_provider(req: OTPRequest):
+        seen.append(req)
+        return "123456"
+
+    cred = RemoteCSCProvider(client, otp_provider=otp_provider).unlock("cred-1", "")
+    cred.hsm.sign(b"", b"data1", "sha256")
+    cred.hsm.sign(b"", b"data2", "sha256")
+    cred.hsm.sign(b"", b"data3", "sha256")
+
+    assert [r.sequence for r in seen] == [1, 2, 3]
+    assert all(r.credential_subject == "CN=Test Signer,O=Test,C=IT" for r in seen)
+
+
+def test_hsm_otp_provider_zero_arg_still_works(cert_material):
+    """Legacy callers that pass a no-arg `Callable[[], str]` must keep
+    working — the HSM falls back to the historic signature when the
+    provider doesn't accept the OTPRequest argument."""
+    cert_pem, _ = cert_material
+    info = _make_info(cert_pem)
+    client = MagicMock()
+    client.credential_info.return_value = info
+    client.authorize.return_value = SAD(value="sad", expires_in=300)
+    client.sign_hash.return_value = [b"sig"]
+
+    cred = RemoteCSCProvider(
+        client, otp_provider=lambda: "654321",
+    ).unlock("cred-1", "")
+    assert cred.hsm.sign(b"", b"data", "sha256") == b"sig"
+    client.authorize.assert_called_once()
+    assert client.authorize.call_args.kwargs["otp"] == "654321"
 
 
 def test_unlock_rejects_empty_chain():

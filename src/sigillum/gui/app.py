@@ -2220,14 +2220,26 @@ class SignView(Gtk.Box):
                     client_id=s.csc_client_id,
                     client_secret=s.csc_client_secret,
                 )
-                # endesive calls hsm.sign() potentially multiple times per
-                # document (e.g. PAdES + TSA). Each call needs a fresh OTP,
-                # so pop a dialog from inside the otp_provider — that way
-                # the user is asked only when an OTP is actually required.
-                otp_provider = lambda: _ask_password(   # noqa: E731
-                    self._parent,
-                    _("Enter the OTP sent by the QTSP for signature activation"),
-                ) or ""
+                # Per-OTP dialog with context (sequence + credential
+                # subject), so that on the rare flows that need more
+                # than one OTP per document the user sees "OTP #2 of …"
+                # instead of a generic-looking re-prompt.
+                def otp_provider(req):
+                    if req.sequence > 1:
+                        prompt = _(
+                            "OTP #{n} for signing with {subj}.\n"
+                            "Enter the new OTP sent by the QTSP."
+                        ).format(
+                            n=req.sequence,
+                            subj=req.credential_subject or s.csc_credential_id,
+                        )
+                    else:
+                        prompt = _(
+                            "Enter the OTP sent by the QTSP to activate "
+                            "the signature."
+                        )
+                    return _ask_password(self._parent, prompt) or ""
+
                 provider = RemoteCSCProvider(
                     CSCClient(cfg), otp_provider=otp_provider, pin=s.csc_pin,
                 )
