@@ -82,11 +82,17 @@ class _SetOfRevocationValues(core.SetOf):
     _child_spec = RevocationValues
 
 
-_CERT_VALUES_OID = "1.2.840.113549.1.9.16.2.23"
-_REVOCATION_VALUES_OID = "1.2.840.113549.1.9.16.2.24"
+CERT_VALUES_OID = "1.2.840.113549.1.9.16.2.23"
+REVOCATION_VALUES_OID = "1.2.840.113549.1.9.16.2.24"
 
-cms.CMSAttributeType._map[_CERT_VALUES_OID] = "certificate_values"
-cms.CMSAttributeType._map[_REVOCATION_VALUES_OID] = "revocation_values"
+# Registering these teaches asn1crypto to name and parse the two attributes.
+# It has to happen before anything parses a CMS: `ObjectIdentifier.native`
+# caches its result per instance, so an attribute type read *before*
+# registration keeps reporting the bare dotted OID for the life of that object.
+# Anything that reads LT attributes therefore imports this module at module
+# level, never lazily inside a function.
+cms.CMSAttributeType._map[CERT_VALUES_OID] = "certificate_values"
+cms.CMSAttributeType._map[REVOCATION_VALUES_OID] = "revocation_values"
 cms.CMSAttribute._oid_specs["certificate_values"] = _SetOfCertificateValues
 cms.CMSAttribute._oid_specs["revocation_values"] = _SetOfRevocationValues
 

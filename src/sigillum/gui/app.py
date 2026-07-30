@@ -165,14 +165,19 @@ def _build_signer(fmt: str) -> Signer:
     return CAdESSigner()
 
 
-def _build_verifier(fmt: str, trusted: list, tsa_trusted: list) -> Verifier:
+def _build_verifier(
+    fmt: str, trusted: list, tsa_trusted: list, check_revocation: bool = False,
+) -> Verifier:
     if fmt == "PAdES":
         cls = PAdESVerifier
     elif fmt == "XAdES":
         cls = XAdESVerifier
     else:
         cls = CAdESVerifier
-    return cls(trusted_certs=trusted, tsa_trusted_certs=tsa_trusted)
+    return cls(
+        trusted_certs=trusted, tsa_trusted_certs=tsa_trusted,
+        check_revocation=check_revocation,
+    )
 
 
 def _default_output_path(input_path: Path, fmt: str) -> Path:
@@ -2724,6 +2729,17 @@ class VerifyView(Gtk.Box):
         )
         adv.pack_start(self._use_tsl_check, False, False, 6)
 
+        # Revocation data embedded in an LT signature is always checked; this
+        # only enables the online lookup for signatures that carry none.
+        self._check_revocation = Gtk.CheckButton(
+            label=_("Check revocation online (OCSP/CRL)")
+        )
+        self._check_revocation.set_tooltip_text(_(
+            "Contact the CA when the signature carries no revocation data. "
+            "Data embedded in an LT signature is always checked, offline."
+        ))
+        adv.pack_start(self._check_revocation, False, False, 0)
+
         expander.add(adv)
         self.pack_start(expander, False, False, 4)
 
@@ -2928,12 +2944,19 @@ class VerifyView(Gtk.Box):
                 return
         else:
             try:
-                result = _build_verifier(fmt, trusted, tsa_trusted).verify(path)
+                result = _build_verifier(
+                    fmt, trusted, tsa_trusted,
+                    check_revocation=self._check_revocation.get_active(),
+                ).verify(path)
             except Exception as ex:  # noqa: BLE001
                 _show_error(self._parent, _("Verification failed: {ex}").format(ex=ex))
                 return
 
         self._clear_results()
+        coverage = getattr(result, "coverage", None)
+        if coverage is not None and not coverage.whole_file:
+            self._results_box.pack_start(
+                self._render_coverage(coverage), False, False, 0)
         if not result.signers:
             self._results_box.pack_start(
                 Gtk.Label(label=_("No signature found."), xalign=0),
@@ -2942,6 +2965,32 @@ class VerifyView(Gtk.Box):
         for i, signer in enumerate(result.signers, 1):
             self._results_box.pack_start(self._render_signer(i, signer), False, False, 0)
         self._results_box.show_all()
+
+    def _render_coverage(self, coverage) -> Gtk.Widget:
+        """Banner for a PDF whose signatures do not cover every byte.
+
+        Shown above the signatures on purpose: a valid signature over part of a
+        document is exactly the case a user must not read as "signed".
+        """
+        frame = Gtk.Frame()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, margin=8)
+        frame.add(box)
+        label = Gtk.Label(xalign=0)
+        label.set_line_wrap(True)
+        label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        label.set_selectable(True)
+        if coverage.modified:
+            title = _("⚠ Modified after signing")
+            color = "#c33"
+        else:
+            title = _("Validation data appended after signing")
+            color = "#a70"
+        label.set_markup(
+            f"<b><span foreground='{color}'>{title}</span></b>\n"
+            + GLib.markup_escape_text(coverage.describe())
+        )
+        box.pack_start(label, False, False, 0)
+        return frame
 
     def _render_signer(self, index: int, info) -> Gtk.Widget:
         frame = Gtk.Frame()
@@ -2985,6 +3034,18 @@ class VerifyView(Gtk.Box):
             chain=_("trusted") if info.cert_trusted else _("untrusted"),
         )
         box.pack_start(_wrap_label(text=flags), False, False, 0)
+
+        revocation = getattr(info, "revocation", None)
+        if revocation is not None and revocation.status.value != "not-checked":
+            revoked = revocation.status.value == "revoked"
+            rev_color = "#c33" if revoked else ("#2a7" if revocation.status.value == "good" else "#a70")
+            box.pack_start(
+                _wrap_label(markup=_("revocation: <span foreground='{color}'>{state}</span>").format(
+                    color=rev_color,
+                    state=GLib.markup_escape_text(revocation.describe()),
+                )),
+                False, False, 0,
+            )
 
         if info.timestamp is not None:
             box.pack_start(Gtk.Separator(), False, False, 4)

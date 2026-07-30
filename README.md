@@ -187,7 +187,8 @@ Available subcommands:
 sigillum sign <file> [-o OUT] [--level B|T|LT] [--visible] [--position …] 
 [--image LOGO] [--reason …] [--cert P12 | --lib LIB --cert-id ID] 
 [--tsa URL --tsa-user U --tsa-password P]
-sigillum verify <file> [--original FILE] [--trusted CA.pem] [--tsa-trusted CA.pem] [--json]
+sigillum verify <file> [--original FILE] [--trusted CA.pem] [--tsa-trusted CA.pem] 
+[--check-revocation] [--json]
 sigillum extract <file.p7m> [-o OUT] [--shallow]
 sigillum timestamp <file> [-o OUT] [--format tsr|tsd] [--tsa URL …]
 sigillum encrypt <file> [-o OUT] [--mode sym|asym] [--algo AES-256|AES-128|3DES|Blowfish] 
@@ -207,6 +208,22 @@ The signature format is derived from the file extension (`.pdf` → PAdES,
 saved configuration if explicit flags are not passed. At level B,
 no TSA is contacted, even if one is present in the Settings — to
 apply a timestamp, use `--level T` (or `--level LT`).
+
+`verify` reports two things beyond the cryptographic checks:
+
+- **Coverage** (PDF only). A PDF signature protects the byte ranges it lists,
+  not "the file", so content appended afterwards leaves the signature intact
+  while changing the document. Sigillum reports how many bytes are actually
+  covered and refuses to call the file valid when the appended revision is not
+  accounted for. A revision that only adds LT validation data (the `/DSS` a
+  `--level LT` signature appends) is reported as such, not as tampering.
+- **Revocation**. OCSP responses and CRLs embedded in an LT signature (CAdES
+  `RevocationValues`, PAdES `/DSS`, XAdES `xades:RevocationValues`) are always
+  checked, offline, and are verified against the issuing CA before being
+  believed. `--check-revocation` additionally queries OCSP, then CRL, for
+  signatures that carry no validation data of their own. A revocation dated
+  after a *trusted* timestamp does not invalidate the signature — unless the
+  reason is a key or CA compromise.
 
 Examples:
 

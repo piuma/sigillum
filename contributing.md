@@ -114,6 +114,28 @@ pytest -q tests/test_xades_roundtrip.py
 pytest -q tests/test_settings.py
 pytest -q tests/test_detection.py
 pytest -q tests/test_crypto.py
+pytest -q tests/test_verify_hardening.py  # coverage + revocation checks
+pytest -q tests/test_vectors.py           # the vector corpus, via API and CLI
+```
+
+### Vector corpus
+
+`tests/vectors.py` generates a corpus of signed artifacts — most of them
+broken on purpose — each paired with the verdict the verifier must reach:
+content edited inside the signed range, an incremental update appended after
+it, an untrusted root, a revoked certificate, an OCSP response signed by a CA
+with no authority over it, and the cases that must *not* be flagged (a DSS-only
+LT tail, two sequential signatures). `tests/test_vectors.py` asserts every
+verdict twice: through the verifier API, and through `sigillum verify` in a
+fresh interpreter.
+
+Nothing is committed as a binary: the corpus is rebuilt from the in-process
+test PKI, so certificates never expire. To materialise it for cross-checking
+against other validators (Dike, Acrobat, the EU DSS demo validator):
+
+```bash
+PYTHONPATH=src python3 tests/vectors.py --out /tmp/sigillum-vectors
+# writes 17 vectors, the trust anchors, and a README explaining each case
 ```
 
 Tests requiring networking:

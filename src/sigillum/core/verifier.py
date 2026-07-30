@@ -11,7 +11,7 @@ import os
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Sequence
 
@@ -19,6 +19,12 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 
 from ..i18n import _
+# Imported at module level, not lazily: importing `lt` is what registers the
+# certValues / revocationValues attribute OIDs with asn1crypto, and that must
+# happen before any CMS is parsed (see the note in lt.py).
+from .lt import REVOCATION_VALUES_OID
+from .pdf_coverage import Coverage
+from .revocation import RevocationInfo, RevocationStatus
 
 try:
     from cryptography.utils import CryptographyDeprecationWarning
@@ -193,8 +199,13 @@ class SignerInfo:
                              message_imprint covers the signer's signature,
                              and the TSA cert chains up to a trusted TSA root.
 
-    `valid` is True only when the signature chain is fully trusted. A timestamp
-    is *informational unless* `timestamp_trusted` is True.
+    `revocation` carries the outcome of the revocation check (embedded OCSP /
+    CRL material, or a live lookup when the caller asked for one). It stays
+    `NOT_CHECKED` for B/T signatures that carry no validation material.
+
+    `valid` is True only when the signature chain is fully trusted *and* the
+    certificate was not revoked at signing time. A timestamp is *informational
+    unless* `timestamp_trusted` is True.
     """
     subject: str = ""
     issuer: str = ""
@@ -206,11 +217,51 @@ class SignerInfo:
     signature_valid: bool = False
     cert_trusted: bool = False
     timestamp_trusted: bool = False
+    revocation: RevocationInfo = field(default_factory=RevocationInfo)
     errors: list[str] = field(default_factory=list)
 
     @property
+    def revoked(self) -> bool:
+        """True when the revocation invalidates *this* signature.
+
+        Revocation is not retroactive: a signature made while the certificate
+        was still good stays good, which is the whole reason a -T signature
+        carries a trusted timestamp (ETSI EN 319 102-1 §5.2.5.4 — the
+        revocation time is compared against the best-signature-time). Two
+        exceptions, and they matter:
+
+          - a compromise (`keyCompromise` / `caCompromise`) says the key was in
+            someone else's hands, so an earlier timestamp proves only that the
+            forgery is old;
+          - without a *trusted* timestamp there is no time to compare against,
+            so the revocation stands.
+        """
+        if self.revocation.status is not RevocationStatus.REVOKED:
+            return False
+        if self.revocation.compromise:
+            return True
+        revoked_at = self.revocation.revoked_at
+        if not (self.timestamp_trusted and self.timestamp and revoked_at):
+            return True
+        return _as_utc(self.timestamp) >= _as_utc(revoked_at)
+
+    @property
     def valid(self) -> bool:
-        return self.hash_valid and self.signature_valid and self.cert_trusted
+        return (
+            self.hash_valid
+            and self.signature_valid
+            and self.cert_trusted
+            and not self.revoked
+        )
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Compare timestamps from different libraries without tripping over tzinfo.
+
+    asn1crypto hands back timezone-aware `gen_time`, cryptography's older
+    revocation accessors hand back naive UTC.
+    """
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
 
 
 @dataclass
@@ -219,12 +270,20 @@ class VerifyResult:
 
     A document can have multiple signatures (controfirme / firme parallele):
     `signers` contains one entry per signature found.
+
+    `coverage` is PDF-only: it says whether the signatures actually protect
+    every byte of the file (see `pdf_coverage`). A document whose tail was
+    modified after signing is never `all_valid`, however impeccable the
+    signature over the part it does cover.
     """
     signers: list[SignerInfo] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    coverage: Coverage | None = None
 
     @property
     def all_valid(self) -> bool:
+        if self.coverage is not None and self.coverage.modified:
+            return False
         return bool(self.signers) and all(s.valid for s in self.signers)
 
 
@@ -293,15 +352,23 @@ class Verifier(ABC):
     store used only for validating the timestamp's TSA cert chain — typical
     deployment keeps the two completely separate (signer roots come from
     AgID/EUTL, TSA roots are explicitly enrolled by the user).
+
+    `check_revocation` enables a *live* revocation lookup (OCSP over AIA, then
+    CRL over CRL-DP) for signatures that carry no embedded validation material.
+    It is off by default because it phones home; material embedded in the
+    signature is always read, since that costs nothing and is the point of an
+    LT signature.
     """
 
     def __init__(
         self,
         trusted_certs: Sequence[x509.Certificate] | None = None,
         tsa_trusted_certs: Sequence[x509.Certificate] | None = None,
+        check_revocation: bool = False,
     ):
         self.trusted_certs = list(trusted_certs or [])
         self.tsa_trusted_certs = list(tsa_trusted_certs or [])
+        self.check_revocation = check_revocation
 
     @abstractmethod
     def verify(self, path: Path, original_path: Path | None = None) -> VerifyResult:
@@ -311,12 +378,79 @@ class Verifier(ABC):
         CAdES detached); for PAdES it is ignored.
         """
 
+    def _apply_revocation(
+        self,
+        info: SignerInfo,
+        leaf: x509.Certificate | None,
+        candidates: Sequence[x509.Certificate],
+        *,
+        ocsp_blobs: Sequence[bytes] = (),
+        crl_blobs: Sequence[bytes] = (),
+    ) -> None:
+        """Fill `info.revocation`, staying silent when there is nothing to say.
+
+        With no embedded material and no live check requested the status stays
+        `NOT_CHECKED`: a B-level signature should not be decorated with an
+        "unavailable" verdict nobody asked for.
+        """
+        if leaf is None:
+            return
+        if not (ocsp_blobs or crl_blobs or self.check_revocation):
+            return
+
+        from . import revocation as rev
+
+        pool = list(candidates) + list(self.trusted_certs)
+        issuer = rev.find_issuer(leaf, pool) or rev.issuer_from_ocsp_material(
+            leaf, ocsp_blobs)
+        info.revocation = rev.check_certificate(
+            leaf, issuer,
+            ocsp_blobs=ocsp_blobs, crl_blobs=crl_blobs,
+            live=self.check_revocation,
+        )
+        if info.revocation.status is RevocationStatus.REVOKED:
+            info.errors.append(_("signer certificate: {state}").format(
+                state=info.revocation.describe()))
+
+
+def revocation_values_from_signer(signer_info) -> tuple[list[bytes], list[bytes]]:
+    """Pull `id-aa-ets-revocationValues` out of a CMS SignerInfo.
+
+    Returns `(ocsp_blobs, crl_blobs)` as DER. The OCSP entries are bare
+    `BasicOCSPResponse` structures (RFC 5126 §6.3.4), which is why
+    `revocation.load_ocsp_response` accepts that shape.
+    """
+    from asn1crypto import core
+
+    ocsp_blobs: list[bytes] = []
+    crl_blobs: list[bytes] = []
+    unsigned = signer_info["unsigned_attrs"]
+    if unsigned is None or isinstance(unsigned, core.Void):
+        return ocsp_blobs, crl_blobs
+    for attr in unsigned:
+        # The dotted form is accepted too: it is what a type reports when its
+        # `.native` was cached before the OID map was populated.
+        if attr["type"].native not in ("revocation_values", REVOCATION_VALUES_OID):
+            continue
+        for values in attr["values"]:
+            try:
+                for basic in values["ocsp_vals"] or []:
+                    ocsp_blobs.append(basic.dump())
+                for crl in values["crl_vals"] or []:
+                    crl_blobs.append(crl.dump())
+            except Exception:  # noqa: BLE001 — malformed attribute, skip it
+                continue
+    return ocsp_blobs, crl_blobs
+
 
 class PAdESVerifier(Verifier):
     def verify(self, path: Path, original_path: Path | None = None) -> VerifyResult:
         del original_path  # PAdES signatures are always self-contained
         from endesive.pdf import verify as pdfverify
         from endesive.pdf.verify import PDFVerifier
+
+        from .pades_lt import read_dss
+        from .pdf_coverage import analyse as analyse_coverage
 
         pdf_data = path.read_bytes()
         trusted_pem = [c.public_bytes(serialization.Encoding.PEM) for c in self.trusted_certs]
@@ -328,6 +462,16 @@ class PAdESVerifier(Verifier):
 
         # Snapshot byte_ranges so we can re-point PDFVerifier at each one in turn.
         all_ranges = list(pv.byte_ranges)
+
+        # A valid signature over *part* of a PDF is the incremental-update
+        # trap: endesive happily reports hash + signature OK for the bytes the
+        # /ByteRange covers and says nothing about what was appended after it.
+        coverage = analyse_coverage(pdf_data, all_ranges) if all_ranges else None
+
+        # LT validation material lives in the PDF's /DSS for PAdES (as opposed
+        # to the CMS unsigned attrs CAdES uses), so read it once for the file.
+        dss = read_dss(pdf_data)
+
         signers: list[SignerInfo] = []
         for idx, (hash_ok, sig_ok, _endesive_cert_ok) in enumerate(results):
             # `_endesive_cert_ok` comes from endesive's PolicyBuilder().build_client_verifier()
@@ -359,11 +503,23 @@ class PAdESVerifier(Verifier):
                         _verify_timestamp(
                             tspdata, sig_bytes, self.tsa_trusted_certs, info,
                         )
+                    # /DSS material first, plus anything the CMS carries itself.
+                    attr_ocsp, attr_crl = revocation_values_from_signer(
+                        signed_data["signer_infos"][0])
+                    self._apply_revocation(
+                        info, cert,
+                        list(othercerts or []) + dss.certificates,
+                        ocsp_blobs=list(dss.ocsp_responses) + attr_ocsp,
+                        crl_blobs=list(dss.crls) + attr_crl,
+                    )
             except Exception as ex:  # noqa: BLE001 — surface as soft error
                 info.errors.append(_("could not decode the certificate: {ex}").format(ex=ex))
             signers.append(info)
 
-        return VerifyResult(signers=signers)
+        result = VerifyResult(signers=signers, coverage=coverage)
+        if coverage is not None and coverage.modified:
+            result.errors.append(coverage.describe())
+        return result
 
 
 class CAdESVerifier(Verifier):
@@ -520,6 +676,14 @@ class CAdESVerifier(Verifier):
                 if info.timestamp:
                     break
 
+        # Revocation last: whether a revocation invalidates the signature
+        # depends on the timestamp parsed just above.
+        ocsp_blobs, crl_blobs = revocation_values_from_signer(signer_info)
+        self._apply_revocation(
+            info, leaf_cert, other_certs,
+            ocsp_blobs=ocsp_blobs, crl_blobs=crl_blobs,
+        )
+
         return info
 
 
@@ -666,4 +830,28 @@ class XAdESVerifier(Verifier):
         if self.trusted_certs and not info.cert_trusted:
             info.errors.append(_("signer certificate chain is not trusted"))
 
+        ocsp_blobs, crl_blobs = _xades_revocation_values(signature)
+        self._apply_revocation(
+            info, leaf, intermediates,
+            ocsp_blobs=ocsp_blobs, crl_blobs=crl_blobs,
+        )
+
         return info
+
+
+def _xades_revocation_values(signature) -> tuple[list[bytes], list[bytes]]:
+    """Read `xades:RevocationValues` out of one ds:Signature element.
+
+    Namespace-agnostic on purpose: XAdES 1.3.2 and 1.4.1 differ in the
+    namespace URI, and the element names are what identify the material.
+    """
+    def _decode(tag: str) -> list[bytes]:
+        out: list[bytes] = []
+        for node in signature.xpath(f".//*[local-name()='{tag}']/text()"):
+            try:
+                out.append(base64.b64decode("".join(node.split())))
+            except Exception:  # noqa: BLE001 — skip an unreadable entry
+                continue
+        return out
+
+    return _decode("EncapsulatedOCSPValue"), _decode("EncapsulatedCRLValue")

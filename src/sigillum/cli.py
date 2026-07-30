@@ -281,6 +281,15 @@ def _signer_info_to_dict(s) -> dict:
         "timestamp": s.timestamp.isoformat() if s.timestamp else None,
         "tsa_subject": s.tsa_subject,
         "timestamp_trusted": s.timestamp_trusted,
+        "revocation": {
+            "status": s.revocation.status.value,
+            "source": s.revocation.source,
+            "revoked_at": s.revocation.revoked_at.isoformat() if s.revocation.revoked_at else None,
+            "reason": s.revocation.reason,
+            "produced_at": s.revocation.produced_at.isoformat() if s.revocation.produced_at else None,
+            "detail": s.revocation.detail,
+        },
+        "revoked": s.revoked,
         "valid": s.valid,
         "errors": list(s.errors),
     }
@@ -308,13 +317,19 @@ def _cmd_verify(args) -> int:
 
     original = Path(args.original) if args.original else None
 
+    live_revocation = bool(getattr(args, "check_revocation", False))
+
     try:
         if fmt == "pades":
-            result = PAdESVerifier(signing_certs, tsa_certs).verify(path)
+            result = PAdESVerifier(
+                signing_certs, tsa_certs, check_revocation=live_revocation).verify(path)
         elif fmt == "cades":
-            result = CAdESVerifier(signing_certs, tsa_certs).verify(path, original)
+            result = CAdESVerifier(
+                signing_certs, tsa_certs, check_revocation=live_revocation,
+            ).verify(path, original)
         elif fmt == "xades":
-            result = XAdESVerifier(signing_certs, tsa_certs).verify(path)
+            result = XAdESVerifier(
+                signing_certs, tsa_certs, check_revocation=live_revocation).verify(path)
         elif fmt == "tsr":
             if original is None:
                 return _err(_(".tsr verification requires --original FILE"))
@@ -333,6 +348,16 @@ def _cmd_verify(args) -> int:
         "signers": [_signer_info_to_dict(s) for s in result.signers],
         "errors": list(result.errors),
     }
+    coverage = getattr(result, "coverage", None)
+    if coverage is not None:
+        payload["coverage"] = {
+            "whole_file": coverage.whole_file,
+            "signed_bytes": coverage.signed_bytes,
+            "total_bytes": coverage.total_bytes,
+            "trailing": coverage.trailing,
+            "modified": coverage.modified,
+            "detail": coverage.detail,
+        }
     if args.json:
         print(json.dumps(payload, indent=2, default=str))
     else:
@@ -343,6 +368,17 @@ def _cmd_verify(args) -> int:
 def _print_verify_human(payload: dict) -> None:
     print(_("File:    {value}").format(value=payload["file"]))
     print(_("Format:  {value}").format(value=payload["format"]))
+    coverage = payload.get("coverage")
+    if coverage is not None:
+        if coverage["whole_file"]:
+            state = _("the whole file")
+        elif not coverage["modified"]:
+            state = _("{signed}/{total} bytes + appended validation data").format(
+                signed=coverage["signed_bytes"], total=coverage["total_bytes"])
+        else:
+            state = _("ONLY {signed} of {total} bytes — MODIFIED AFTER SIGNING").format(
+                signed=coverage["signed_bytes"], total=coverage["total_bytes"])
+        print(_("Covered: {value}").format(value=state))
     if payload["errors"]:
         for e in payload["errors"]:
             print(f"  ! {e}")
@@ -361,6 +397,10 @@ def _print_verify_human(payload: dict) -> None:
             state=_("OK") if s["signature_valid"] else _("INVALID")))
         print(_("  Chain:       {state}").format(
             state=_("trusted") if s["cert_trusted"] else _("UNTRUSTED")))
+        revocation = s.get("revocation") or {}
+        if revocation.get("status", "not-checked") != "not-checked":
+            print(_("  Revocation:  {state}").format(
+                state=_describe_revocation(revocation)))
         if s["timestamp"]:
             ts_state = _("trusted") if s["timestamp_trusted"] else _("not trusted")
             print(_("  Timestamp:   {ts} (TSA {state})").format(
@@ -372,6 +412,25 @@ def _print_verify_human(payload: dict) -> None:
     print()
     print(_("Overall: {state}").format(
         state=_("VALID") if payload["all_valid"] else _("INVALID")))
+
+
+def _describe_revocation(revocation: dict) -> str:
+    """One line for the revocation outcome, in the JSON payload's terms."""
+    status = revocation.get("status", "not-checked")
+    source = revocation.get("source") or ""
+    if status == "revoked":
+        when = revocation.get("revoked_at") or _("unknown date")
+        reason = revocation.get("reason") or ""
+        return _("REVOKED on {when}{reason}").format(
+            when=when, reason=f" ({reason})" if reason else "")
+    if status == "good":
+        return _("not revoked ({source})").format(source=source)
+    if status == "unknown":
+        return _("the responder does not know this certificate ({source})").format(
+            source=source)
+    detail = revocation.get("detail") or ""
+    return _("could not be checked{detail}").format(
+        detail=f": {detail}" if detail else "")
 
 
 # ---------------------------------------------------------------------------
@@ -941,6 +1000,11 @@ def build_parser() -> argparse.ArgumentParser:
                        help=_("PEM with extra CAs for the signer chain (repeatable)"))
     p_ver.add_argument("--tsa-trusted", dest="tsa_trusted", action="append",
                        help=_("PEM with extra CAs for the TSA chain (repeatable)"))
+    p_ver.add_argument(
+        "--check-revocation", dest="check_revocation", action="store_true",
+        help=_("look up revocation online (OCSP, then CRL) when the signature "
+               "carries no validation data; embedded data is always checked"),
+    )
     p_ver.add_argument("--json", action="store_true", help=_("machine-readable JSON output"))
     p_ver.set_defaults(func=_cmd_verify)
 

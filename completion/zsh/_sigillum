@@ -141,6 +141,7 @@ _shtab_sigillum_verify_options=(
   "--original[original file (required for .tsr and detached CAdES)]:original:"
   "*--trusted[PEM with extra CAs for the signer chain (repeatable)]:trusted:"
   "*--tsa-trusted[PEM with extra CAs for the TSA chain (repeatable)]:tsa_trusted:"
+  "--check-revocation[look up revocation online (OCSP, then CRL) when the signature carries no validation data\; embedded data is always checked]"
   "--json[machine-readable JSON output]"
   ":signed\/timestamped file:"
 )
