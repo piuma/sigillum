@@ -141,7 +141,10 @@ def _verify_timestamp(
         from endesive.pdf.verify import PDFVerifier
         with _silenced():
             pv = PDFVerifier(b"%PDF-1.4\n%%EOF\n")  # stub; only decompose is used
-            (_, _, _, _tcert, _tothercerts, _hashok, tsa_sig_ok) = (
+            # Names, not `_`: a throwaway `_` here would shadow the i18n
+            # function for the rest of this function, and the first error
+            # message we tried to build would crash instead.
+            (_tsd, _tsp, _tsigned, _tcert, _tothercerts, _hashok, tsa_sig_ok) = (
                 pv.decompose_signed_data(b"", tspdata)
             )
     except Exception as ex:  # noqa: BLE001
@@ -340,7 +343,11 @@ class PAdESVerifier(Verifier):
                 with _silenced():
                     decomposed = pv.decompose_signature()
                 if decomposed:
-                    signed_data, tspdata, _, cert, othercerts, _, _ = decomposed
+                    # Not `_` for the unused slots: it would shadow the i18n
+                    # function for the rest of this method (see the same trap
+                    # in _verify_timestamp).
+                    (signed_data, tspdata, _signed, cert, othercerts,
+                     _hash_ok, _sig_ok) = decomposed
                     info.subject = cert.subject.rfc4514_string()
                     info.issuer = cert.issuer.rfc4514_string()
                     info.serial = format(cert.serial_number, "x")

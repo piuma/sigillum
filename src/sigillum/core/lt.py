@@ -147,7 +147,9 @@ def fetch_chain_via_aia(
     """
     chain = [leaf]
     current = leaf
-    for _ in range(max_depth):
+    # `_hop`, not `_`: a throwaway `_` here shadows the i18n function for the
+    # rest of the scope, which turns the first error message into a TypeError.
+    for _hop in range(max_depth):
         if _looks_self_signed(current):
             break
         url = ca_issuers_url(current)
