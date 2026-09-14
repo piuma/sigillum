@@ -3,6 +3,7 @@
 """Credential providers: hardware tokens (PKCS#11) and file-based certificates."""
 from __future__ import annotations
 
+import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -110,6 +111,37 @@ class _PKCS11HSM:
         return bytes(plaintext)
 
 
+# PKCS#11 modules must never be unloaded once loaded.
+#
+# PyKCS11 refcounts each module and `dlclose()`s it when the last PyKCS11Lib
+# referencing it is garbage-collected. Several vendor middlewares don't survive
+# that: Actalis' CyberMW (/usr/lib64/libcybermw.so) spawns a background PC/SC
+# monitor thread that keeps running after C_Finalize, so the dlclose unmaps the
+# code under that thread and the next PKCS#11 call in the process dies with
+# SIGSEGV at an unmapped address. Since every provider here was short-lived
+# (`PKCS11Provider(lib).list_certificates()`), the second token operation of a
+# session crashed the whole app.
+#
+# Caching one PyKCS11Lib per path keeps PyKCS11's refcount above zero for the
+# lifetime of the process, so no module is ever unloaded. Loading a PKCS#11
+# module is also expensive, so this doubles as a cache.
+_LIB_CACHE: dict[str, object] = {}
+_LIB_CACHE_LOCK = threading.Lock()
+
+
+def _load_library(path: str):
+    """Load a PKCS#11 module once per process and keep it loaded forever."""
+    import PyKCS11
+
+    with _LIB_CACHE_LOCK:
+        lib = _LIB_CACHE.get(path)
+        if lib is None:
+            lib = PyKCS11.PyKCS11Lib()
+            lib.load(path)  # raises PyKCS11Error; nothing is cached on failure
+            _LIB_CACHE[path] = lib
+        return lib
+
+
 class PKCS11Provider(CredentialProvider):
     """Hardware token / smartcard via PKCS#11.
 
@@ -127,9 +159,7 @@ class PKCS11Provider(CredentialProvider):
 
     def _lib(self):
         if self._pkcs11 is None:
-            import PyKCS11
-            self._pkcs11 = PyKCS11.PyKCS11Lib()
-            self._pkcs11.load(self.library_path)
+            self._pkcs11 = _load_library(self.library_path)
         return self._pkcs11
 
     def _resolve_slot(self) -> int:
