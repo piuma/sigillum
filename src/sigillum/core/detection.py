@@ -50,6 +50,12 @@ SYSTEM_DRIVER_PATHS: tuple[str, ...] = (
     "/usr/lib64/libcybermw.so",
     "/usr/lib/x86_64-linux-gnu/libcybermw.so",
     "/usr/local/lib/libcybermw.so",
+    # CIE — Italian electronic ID card. The official middleware is distributed
+    # as a tarball/installer rather than a distro package, so it lands under
+    # /usr/local/lib.
+    "/usr/local/lib/libcie-pkcs11.so",
+    "/usr/lib64/libcie-pkcs11.so",
+    "/usr/lib/x86_64-linux-gnu/libcie-pkcs11.so",
     # OpenSC — host packages
     "/usr/lib64/pkcs11/opensc-pkcs11.so",
     "/usr/lib64/opensc-pkcs11.so",
@@ -264,6 +270,10 @@ def _label_for(path: str) -> str:
         return "Bit4id"
     if "cybermw" in p:
         return "Actalis (CyberMW)"
+    # Match the module name, not a bare "cie" — that substring turns up in
+    # plenty of unrelated paths.
+    if "libcie" in p or "cie-pkcs11" in p:
+        return _("CIE (Italian electronic ID card)")
     if "opensc" in p:
         return _("OpenSC (generic smartcard)")
     return Path(path).name
