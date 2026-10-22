@@ -50,9 +50,21 @@ SYSTEM_DRIVER_PATHS: tuple[str, ...] = (
     "/usr/lib64/libcybermw.so",
     "/usr/lib/x86_64-linux-gnu/libcybermw.so",
     "/usr/local/lib/libcybermw.so",
-    # CIE — Italian electronic ID card. The official middleware is distributed
-    # as a tarball/installer rather than a distro package, so it lands under
-    # /usr/local/lib.
+    # CIE — Italian electronic ID card.
+    #
+    # Either driver only reports certificates once the card has been paired
+    # (`cie_enable`, or the official CIE ID app): the certificate sits in a
+    # PIN-protected EF, so without the ~/.CIEPKI cache the session cannot be
+    # opened and we simply find no certificates.
+    #
+    # `opencie-pkcs11` is the maintained successor and goes first: the official
+    # `libcie-pkcs11` uses GNU libiconv without declaring the dependency, so it
+    # fails to load on distros that only ship glibc's iconv (Fedora).
+    "/usr/local/lib/libopencie-pkcs11.so",
+    "/usr/lib64/libopencie-pkcs11.so",
+    "/usr/lib/x86_64-linux-gnu/libopencie-pkcs11.so",
+    # CIE — official middleware, shipped as a tarball/installer rather than a
+    # distro package, so it lands under /usr/local/lib.
     "/usr/local/lib/libcie-pkcs11.so",
     "/usr/lib64/libcie-pkcs11.so",
     "/usr/lib/x86_64-linux-gnu/libcie-pkcs11.so",
@@ -270,6 +282,11 @@ def _label_for(path: str) -> str:
         return "Bit4id"
     if "cybermw" in p:
         return "Actalis (CyberMW)"
+    # Must precede the generic CIE rule below: "libopencie-pkcs11" contains
+    # "cie-pkcs11", and when both drivers are installed the two entries would
+    # otherwise be indistinguishable in the UI.
+    if "opencie" in p:
+        return _("CIE (OpenCIE)")
     # Match the module name, not a bare "cie" — that substring turns up in
     # plenty of unrelated paths.
     if "libcie" in p or "cie-pkcs11" in p:
