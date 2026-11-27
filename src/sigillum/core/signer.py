@@ -154,6 +154,72 @@ def _add_visible_appearance(dct, input_path, credential, options, signing_date_p
         dct["text"] = {"wraptext": True, "fontsize": 8, "linespacing": 1.2}
 
 
+def _cades_signed_attrs(cert_der: bytes, signing_time):
+    """Build the CAdES signed attributes, signing-time included.
+
+    endesive's built-in `attrs=True` produces only content-type, message-digest
+    and signing-certificate-v2: signing-time is commented out in its source. A
+    CAdES-BES signature without it is rejected as non-compliant — ArubaSign
+    reports "Signed-property SigningTime non presente o non aderente allo
+    standard" and flags the signature as not meeting Decision (EU) 2015/1506.
+
+    The attribute is covered by the signature, so it cannot be bolted on after
+    the fact: we hand endesive the complete set instead (it accepts a function,
+    called with the content digest, in place of `attrs=True`).
+
+    *cert_der* must be the DER of the very certificate endesive signs with, so
+    that signing-certificate-v2 refers to it. Careful with tokens: endesive
+    ignores the certificate passed to `sign()` when an HSM is in play and uses
+    `hsm.certificate()` instead — the caller resolves this.
+
+    RFC 5652 requires UTCTime for dates before 2050, which is also what Italian
+    verifiers expect; asn1crypto's `cms.Time` would otherwise be free to pick
+    GeneralizedTime.
+    """
+    def build(signed_value):
+        import hashlib
+
+        from asn1crypto import algos, cms, core, tsp
+        from asn1crypto import x509 as asn1x509
+
+        cert = asn1x509.Certificate.load(cert_der)
+        issuer_serial = tsp.IssuerSerial({
+            "issuer": (asn1x509.GeneralName({"directory_name": cert.issuer}),),
+            "serial_number": cert.serial_number,
+        })
+        signing_certificate_v2 = cms.CMSAttribute({
+            "type": cms.CMSAttributeType("signing_certificate_v2"),
+            "values": [
+                tsp.SigningCertificateV2({
+                    "certs": [
+                        tsp.ESSCertIDv2({
+                            "hash_algorithm": algos.DigestAlgorithm({"algorithm": "sha256"}),
+                            "cert_hash": hashlib.sha256(cert.dump()).digest(),
+                            "issuer_serial": issuer_serial,
+                        }),
+                    ],
+                }),
+            ],
+        })
+        return [
+            cms.CMSAttribute({
+                "type": cms.CMSAttributeType("content_type"),
+                "values": ("data",),
+            }),
+            cms.CMSAttribute({
+                "type": cms.CMSAttributeType("signing_time"),
+                "values": (cms.Time({"utc_time": core.UTCTime(signing_time)}),),
+            }),
+            cms.CMSAttribute({
+                "type": cms.CMSAttributeType("message_digest"),
+                "values": (signed_value,),
+            }),
+            signing_certificate_v2,
+        ]
+
+    return build
+
+
 def _tsa_credentials(options: "SignOptions") -> dict | None:
     """Build the credentials dict endesive expects (HTTP Basic Auth on TSA).
 
@@ -189,7 +255,11 @@ class PAdESSigner(Signer):
         if options.level not in (SignatureLevel.B, SignatureLevel.T, SignatureLevel.LT):
             raise NotImplementedError(_("signature level {level} not yet supported").format(level=options.level.value))
 
-        signing_date = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S+00'00'")
+        # The `D:` prefix is part of the PDF date syntax (ISO 32000,
+        # D:YYYYMMDDHHmmSSOHH'mm'). endesive writes `signingdate` into /M
+        # verbatim in the path we use (pdf/cms.py), unlike its other writer
+        # which adds the prefix itself, so we have to supply it.
+        signing_date = datetime.now(timezone.utc).strftime("D:%Y%m%d%H%M%S+00'00'")
         dct = {
             "sigflags": 3,
             "contact": options.contact or "",
@@ -258,6 +328,8 @@ class CAdESSigner(Signer):
     """
 
     def sign(self, input_path, output_path, credential, options):
+        from datetime import datetime, timezone
+
         from asn1crypto import cms as asn1cms, core
         from endesive import signer as endesive_signer
 
@@ -265,13 +337,20 @@ class CAdESSigner(Signer):
             raise NotImplementedError(_("signature level {level} not yet supported").format(level=options.level.value))
 
         datau = input_path.read_bytes()
+        if credential.hsm is not None:
+            # endesive discards the certificate we pass when signing through a
+            # token and uses `hsm.certificate()`, so signing-certificate-v2 has
+            # to describe that one or it wouldn't match the signer.
+            _keyid, cert_der = credential.hsm.certificate()
+        else:
+            cert_der = credential.certificate.public_bytes(serialization.Encoding.DER)
         detached = endesive_signer.sign(
             datau,
             credential.private_key,
             credential.certificate,
             list(credential.chain),
             "sha256",
-            attrs=True,
+            attrs=_cades_signed_attrs(cert_der, datetime.now(timezone.utc)),
             hsm=credential.hsm,
             timestampurl=options.tsa_url,
             timestampcredentials=_tsa_credentials(options),
