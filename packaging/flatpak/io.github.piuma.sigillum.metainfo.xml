@@ -60,6 +60,19 @@
   </provides>
 
   <releases>
+    <release version="0.2.3" date="2026-11-27">
+      <description>
+        <p>Verify now checks what a signature actually covers, so bytes
+           appended after signing are reported instead of passing as valid,
+           and checks certificate revocation from the OCSP responses and CRLs
+           embedded in the signature, with an opt-in live lookup. CAdES
+           signatures carry the signing time required by Decision (EU)
+           2015/1506, and the PAdES signing date is written in the PDF date
+           syntax. PKCS#11 drivers are kept loaded, fixing a crash with the
+           Actalis CyberMW middleware, and the Italian electronic identity
+           card (CIE) is recognised.</p>
+      </description>
+    </release>
     <release version="0.2.2" date="2026-06-03">
       <description>
         <p>Explicit CAdES/PAdES/XAdES selector on the Sign tab; multi-signer

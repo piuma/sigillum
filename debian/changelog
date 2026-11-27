@@ -1,3 +1,35 @@
+sigillum (0.2.3-1) unstable; urgency=medium
+
+  * Verify: signatures are now checked for coverage. A PDF signature
+    commits to the byte ranges in its /ByteRange, not to the whole file,
+    so bytes appended after signing used to verify as fully valid; the
+    appended revision is now walked and accepted only when it carries
+    validation data alone (the /DSS that PAdES-LT legitimately appends).
+  * Verify: certificate revocation is checked. Embedded OCSP responses
+    and CRLs (PAdES /DSS, CAdES and XAdES RevocationValues) were being
+    collected at signing time and never read back, so a revoked
+    certificate verified as trusted. Material carried inside the
+    signature is validated against the issuing CA before it is believed.
+    New `--check-revocation` flag for an opt-in live lookup, new
+    `Covered:` and `Revocation:` lines in the report, matching fields in
+    `--json`, and coverage and revocation indicators in the GUI.
+  * CAdES: the signed attributes carry `signingTime` as `UTCTime`. It was
+    missing entirely, which made Italian verifiers reject the signature
+    as not compliant with Decision (EU) 2015/1506 (GitHub issue #6).
+  * PAdES: the /M entry of the signature dictionary uses the `D:` prefix
+    the PDF date syntax requires; the date was being written malformed.
+  * PKCS#11 modules are loaded once and kept for the lifetime of the
+    process. Unloading Actalis' CyberMW driver crashed the application
+    with SIGSEGV on the next token operation, taking auto-detect and
+    signing down with it.
+  * Driver detection recognises the Italian electronic identity card
+    (CIE), both the official middleware and OpenCIE, and sees
+    host-installed vendor drivers from inside the Flatpak sandbox.
+  * Flatpak: application id renamed to io.github.piuma.sigillum and the
+    runtime bumped, for Flathub submission.
+
+ -- Danilo Abbasciano <danilo@piumalab.org>  Fri, 27 Nov 2026 11:00:00 +0100
+
 sigillum (0.2.2-1) unstable; urgency=medium
 
   * Sign tab: explicit CAdES/PAdES/XAdES radio selector; PAdES is enabled
