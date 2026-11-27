@@ -43,43 +43,63 @@ SIG_SLOT_CKA_ID = "02"
 
 
 def _need_pin() -> str:
+    """Il PIN dall'ambiente, o skip.
+
+    `pytest.skip` e non `sys.exit`: quest'ultimo terminava l'intero processo,
+    e pytest lo registrava come *fallimento* del test in corso — una suite
+    rossa su qualunque macchina senza YubiKey, dove invece questi test vanno
+    semplicemente saltati.
+    """
     pin = os.environ.get("SIGILLUM_PIN")
     if not pin:
-        print(
-            "SKIP: variabile d'ambiente SIGILLUM_PIN non impostata. "
-            "Riavvia con: SIGILLUM_PIN=<pin> .venv/bin/python tests/test_pkcs11_yubikey.py"
+        pytest.skip(
+            "variabile d'ambiente SIGILLUM_PIN non impostata; riavvia con: "
+            "SIGILLUM_PIN=<pin> pytest tests/test_pkcs11_yubikey.py"
         )
-        sys.exit(0)
     return pin
 
 
-def test_list_certs_on_yubikey():
-    provider = PKCS11Provider(YKCS11_LIB)
-    certs = provider.list_certificates()
-    print(f"Trovati {len(certs)} certificati sul token:")
-    for c in certs:
-        print(f"  id={c.id} subject={c.subject!r}")
+def _signing_cert(provider: PKCS11Provider):
+    """Il cert utente sullo slot di firma, o skip spiegando cosa manca.
+
+    Separato dal test che lo esercita: prima i due test di firma chiamavano
+    `test_list_certs_on_yubikey()` per averne il valore di ritorno, cosa che
+    pytest segnala (`PytestReturnNotNoneWarning`) perché un test deve
+    asserire, non restituire.
+    """
+    try:
+        certs = provider.list_certificates()
+    except Exception as exc:  # noqa: BLE001 — nessun token: salta, non fallire
+        pytest.skip(f"nessun token PKCS#11 leggibile tramite {YKCS11_LIB}: {exc}")
     target = next(
         (c for c in certs
          if c.id.startswith(f"{SIG_SLOT_CKA_ID}:") and "Attestation" not in c.subject),
         None,
     )
     if target is None:
-        print(
-            f"SKIP: il cert utente sullo slot di firma (CKA_ID={SIG_SLOT_CKA_ID}) "
-            "non è stato trovato. Vedi le istruzioni in cima al file per provisionarlo."
+        pytest.skip(
+            f"il cert utente sullo slot di firma (CKA_ID={SIG_SLOT_CKA_ID}) non è "
+            "presente; vedi le istruzioni in cima al file per provisionarlo"
         )
-        sys.exit(0)
-    print(f"OK: slot di firma trovato → {target.subject} (id={target.id})")
     return target
 
 
+def test_list_certs_on_yubikey():
+    provider = PKCS11Provider(YKCS11_LIB)
+    try:
+        target = _signing_cert(provider)
+        assert target.subject, "il cert sullo slot di firma non ha un subject"
+        print(f"OK: slot di firma trovato → {target.subject} (id={target.id})")
+    finally:
+        provider.close()
+
+
 def test_pades_sign_with_yubikey():
-    target = test_list_certs_on_yubikey()
     pin = _need_pin()
 
     provider = PKCS11Provider(YKCS11_LIB)
     try:
+        target = _signing_cert(provider)
         cred = provider.unlock(target.id, pin)
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
@@ -111,11 +131,11 @@ def test_pades_sign_with_yubikey():
 
 
 def test_cades_sign_with_yubikey():
-    target = test_list_certs_on_yubikey()
     pin = _need_pin()
 
     provider = PKCS11Provider(YKCS11_LIB)
     try:
+        target = _signing_cert(provider)
         cred = provider.unlock(target.id, pin)
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
@@ -143,6 +163,14 @@ def test_cades_sign_with_yubikey():
 
 
 if __name__ == "__main__":
-    test_pades_sign_with_yubikey()
-    test_cades_sign_with_yubikey()
+    # Eseguito come script (vedi il docstring in cima): fuori da pytest
+    # `pytest.skip` solleva un'eccezione, che qui traduciamo nel messaggio e
+    # nell'uscita pulita che prima produceva `sys.exit(0)`.
+    try:
+        test_list_certs_on_yubikey()
+        test_pades_sign_with_yubikey()
+        test_cades_sign_with_yubikey()
+    except pytest.skip.Exception as exc:
+        print(f"\nSKIP: {exc}")
+        sys.exit(0)
     print("\nTest YubiKey completati.")
